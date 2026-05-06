@@ -1,0 +1,336 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}Умный Коворкинг{% endblock %}</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/bootstrap.min.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.3/css/all.min.css">
+
+    <!-- Стили для flash-сообщений -->
+    <style>
+        .flash-container {
+            position: fixed;
+            top: 80px;
+            right: 20px;
+            z-index: 10000;
+            max-width: 400px;
+            width: 100%;
+        }
+
+        .flash {
+            padding: 15px 20px;
+            margin-bottom: 10px;
+            border-radius: 8px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+            border-left: 4px solid;
+            animation: slideInRight 0.3s ease-out;
+            position: relative;
+            overflow: hidden;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            background: white;
+        }
+
+        @keyframes slideInRight {
+            from {
+                transform: translateX(100%);
+                opacity: 0;
+            }
+            to {
+                transform: translateX(0);
+                opacity: 1;
+            }
+        }
+
+        @keyframes slideOutRight {
+            from {
+                transform: translateX(0);
+                opacity: 1;
+            }
+            to {
+                transform: translateX(100%);
+                opacity: 0;
+            }
+        }
+
+        .flash.hiding {
+            animation: slideOutRight 0.3s ease-out forwards;
+        }
+
+        .flash-success {
+            border-left-color: #28a745;
+            background-color: #d4edda;
+            color: #155724;
+        }
+
+        .flash-error {
+            border-left-color: #dc3545;
+            background-color: #f8d7da;
+            color: #721c24;
+        }
+
+        .flash-warning {
+            border-left-color: #ffc107;
+            background-color: #fff3cd;
+            color: #856404;
+        }
+
+        .flash-info {
+            border-left-color: #17a2b8;
+            background-color: #d1ecf1;
+            color: #0c5460;
+        }
+
+        .flash-message {
+            flex-grow: 1;
+            margin-right: 10px;
+        }
+
+        .flash-close {
+            background: none;
+            border: none;
+            font-size: 20px;
+            line-height: 1;
+            color: inherit;
+            opacity: 0.7;
+            cursor: pointer;
+            padding: 0;
+            width: 20px;
+            height: 20px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .flash-close:hover {
+            opacity: 1;
+        }
+
+        .flash-progress {
+            position: absolute;
+            bottom: 0;
+            left: 0;
+            height: 3px;
+            width: 100%;
+            background: rgba(0,0,0,0.1);
+        }
+
+        .flash-progress-bar {
+            height: 100%;
+            animation: progress 5s linear forwards;
+        }
+
+        @keyframes progress {
+            from { width: 100%; }
+            to { width: 0%; }
+        }
+
+        .flash-success .flash-progress-bar {
+            background: #28a745;
+        }
+
+        .flash-error .flash-progress-bar {
+            background: #dc3545;
+        }
+
+        .flash-warning .flash-progress-bar {
+            background: #ffc107;
+        }
+
+        .flash-info .flash-progress-bar {
+            background: #17a2b8;
+        }
+
+        @media (max-width: 768px) {
+            .flash-container {
+                top: 60px;
+                right: 10px;
+                left: 10px;
+                max-width: none;
+            }
+        }
+    </style>
+</head>
+<body>
+    <!-- Навигация -->
+    <nav class="navbar">
+        <div class="container">
+            <a href="{{ url_for('index') }}" class="logo">
+                <i class="fas fa-building"></i>
+                <span>Умный Коворкинг</span>
+            </a>
+        </div>
+    </nav>
+
+    <!-- Контейнер для flash-сообщений -->
+    <div class="flash-container">
+        {% with messages = get_flashed_messages(with_categories=true) %}
+            {% if messages %}
+                {% for category, message in messages %}
+                    {% set category = category if category in ['success', 'error', 'warning', 'info'] else 'info' %}
+                    <div class="flash flash-{{ category }}" id="flash-{{ loop.index }}">
+                        <div class="flash-message">
+                            {% if category == 'success' %}
+                                <i class="fas fa-check-circle mr-2"></i>
+                            {% elif category == 'error' %}
+                                <i class="fas fa-exclamation-circle mr-2"></i>
+                            {% elif category == 'warning' %}
+                                <i class="fas fa-exclamation-triangle mr-2"></i>
+                            {% else %}
+                                <i class="fas fa-info-circle mr-2"></i>
+                            {% endif %}
+                            {{ message }}
+                        </div>
+                        <button class="flash-close" onclick="closeFlash('flash-{{ loop.index }}')">
+                            &times;
+                        </button>
+                        <div class="flash-progress">
+                            <div class="flash-progress-bar"></div>
+                        </div>
+                    </div>
+                {% endfor %}
+            {% endif %}
+        {% endwith %}
+    </div>
+
+    <!-- Содержимое страницы -->
+    <main>
+        {% block content %}{% endblock %}
+    </main>
+
+    <!-- Скрипты -->
+    <script src="{{ url_for('static', filename='js/jquery.min.js') }}"></script>
+    <script src="{{ url_for('static', filename='js/bootstrap.bundle.min.js') }}"></script>
+    <script src="{{ url_for('static', filename='js/main.js') }}"></script>
+
+    <script>
+        // Обработка flash-сообщений
+        document.addEventListener('DOMContentLoaded', function() {
+            const flashes = document.querySelectorAll('.flash');
+
+            flashes.forEach(function(flash) {
+                // Автоматическое закрытие через 5 секунд
+                const timer = setTimeout(function() {
+                    flash.classList.add('hiding');
+                    setTimeout(function() {
+                        if (flash.parentNode) {
+                            flash.remove();
+                        }
+                    }, 300);
+                }, 5000);
+
+                // Останавливаем таймер при наведении
+                flash.addEventListener('mouseenter', function() {
+                    clearTimeout(timer);
+
+                    // Останавливаем анимацию прогресс-бара
+                    const progressBar = flash.querySelector('.flash-progress-bar');
+                    if (progressBar) {
+                        progressBar.style.animationPlayState = 'paused';
+                    }
+                });
+
+                // Возобновляем таймер при уходе курсора
+                flash.addEventListener('mouseleave', function() {
+                    // Перезапускаем таймер
+                    const newTimer = setTimeout(function() {
+                        flash.classList.add('hiding');
+                        setTimeout(function() {
+                            if (flash.parentNode) {
+                                flash.remove();
+                            }
+                        }, 300);
+                    }, 2000);
+
+                    // Возобновляем анимацию прогресс-бара
+                    const progressBar = flash.querySelector('.flash-progress-bar');
+                    if (progressBar) {
+                        progressBar.style.animationPlayState = 'running';
+                        progressBar.style.animationDuration = '2s';
+                    }
+
+                    // Сохраняем новый таймер
+                    flash.dataset.timer = newTimer;
+                });
+
+                // Обработчик клика на кнопку закрытия
+                const closeBtn = flash.querySelector('.flash-close');
+                if (closeBtn) {
+                    closeBtn.addEventListener('click', function() {
+                        clearTimeout(timer);
+                        if (flash.dataset.timer) {
+                            clearTimeout(flash.dataset.timer);
+                        }
+                        flash.classList.add('hiding');
+                        setTimeout(function() {
+                            if (flash.parentNode) {
+                                flash.remove();
+                            }
+                        }, 300);
+                    });
+                }
+            });
+        });
+
+        // Функция для закрытия конкретного flash-сообщения
+        function closeFlash(id) {
+            const flash = document.getElementById(id);
+            if (flash) {
+                flash.classList.add('hiding');
+                setTimeout(function() {
+                    if (flash.parentNode) {
+                        flash.remove();
+                    }
+                }, 300);
+            }
+        }
+
+        // Глобальная функция для показа уведомлений (можно использовать из других скриптов)
+        function showNotification(message, type = 'info') {
+            const container = document.querySelector('.flash-container');
+            if (!container) return;
+
+            const id = 'flash-' + Date.now();
+            const flash = document.createElement('div');
+            flash.className = `flash flash-${type}`;
+            flash.id = id;
+
+            const icon = type === 'success' ? 'fa-check-circle' :
+                        type === 'error' ? 'fa-exclamation-circle' :
+                        type === 'warning' ? 'fa-exclamation-triangle' : 'fa-info-circle';
+
+            flash.innerHTML = `
+                <div class="flash-message">
+                    <i class="fas ${icon} mr-2"></i>
+                    ${message}
+                </div>
+                <button class="flash-close" onclick="closeFlash('${id}')">
+                    &times;
+                </button>
+                <div class="flash-progress">
+                    <div class="flash-progress-bar"></div>
+                </div>
+            `;
+
+            container.appendChild(flash);
+
+            // Автоматическое закрытие
+            setTimeout(function() {
+                if (flash.parentNode) {
+                    flash.classList.add('hiding');
+                    setTimeout(function() {
+                        if (flash.parentNode) {
+                            flash.remove();
+                        }
+                    }, 300);
+                }
+            }, 5000);
+        }
+    </script>
+
+    {% block scripts %}{% endblock %}
+</body>
+</html>

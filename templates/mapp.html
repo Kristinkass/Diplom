@@ -1,0 +1,1099 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Карта пространства - Умный Коворкинг</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/bootstrap.min.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        /* Стили для уведомлений */
+        .flashes-container {
+            position: fixed;
+            top: 80px;
+            right: 20px;
+            z-index: 1000;
+            width: 350px;
+        }
+
+        .alert {
+            padding: 12px 15px;
+            margin-bottom: 10px;
+            border-radius: 8px;
+            border-left: 4px solid;
+            background: white;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+            animation: slideIn 0.3s ease;
+            position: relative;
+            overflow: hidden;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+
+        .alert-success { border-left-color: #10b981; background: #d1fae5; }
+        .alert-error { border-left-color: #ef4444; background: #fee2e2; }
+        .alert-info { border-left-color: #0ea5e9; background: #e0f2fe; }
+        .alert-warning { border-left-color: #f59e0b; background: #fef3c7; }
+
+        @keyframes slideIn {
+            from { transform: translateX(100%); opacity: 0; }
+            to { transform: translateX(0); opacity: 1; }
+        }
+
+        .alert.hiding {
+            animation: slideOut 0.3s ease forwards;
+        }
+
+        @keyframes slideOut {
+            from { transform: translateX(0); opacity: 1; }
+            to { transform: translateX(100%); opacity: 0; }
+        }
+
+        .alert-progress {
+            position: absolute;
+            bottom: 0;
+            left: 0;
+            height: 3px;
+            background-color: currentColor;
+            opacity: 0.3;
+            width: 100%;
+            animation: progress 5s linear forwards;
+        }
+
+        @keyframes progress {
+            from { width: 100%; }
+            to { width: 0%; }
+        }
+
+        .alert-close {
+            background: none;
+            border: none;
+            color: #666;
+            cursor: pointer;
+            padding: 0;
+            margin-left: 10px;
+            font-size: 18px;
+            line-height: 1;
+        }
+
+        .alert-close:hover {
+            color: #333;
+        }
+
+        .alert-content {
+            flex: 1;
+        }
+
+        /* Стили для SVG карты */
+        .floor-plan-container {
+            background: #e2e8f0;
+            border: 3px solid #475569;
+            border-radius: 16px;
+            padding: 15px;
+            margin: 20px 0;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.15);
+            overflow: auto;
+        }
+
+        .floor-plan-svg {
+            background: white;
+            border-radius: 12px;
+            box-shadow: 0 5px 20px rgba(0,0,0,0.1);
+            width: 100%;
+            height: auto;
+        }
+
+        /* Стили для зон на карте */
+        .place-zone {
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+
+        .place-zone:hover {
+            filter: brightness(1.08);   /* лёгкое осветление без движения */
+        }
+
+        .place-zone.free {
+            fill: #22c55e;
+            fill-opacity: 0.4;
+            stroke: #16a34a;
+        }
+
+        .place-zone.occupied {
+            fill: #ef4444;
+            fill-opacity: 0.45;
+            stroke: #dc2626;
+        }
+
+        .place-zone.reserved {
+            fill: #f59e0b;
+            fill-opacity: 0.4;
+            stroke: #d97706;
+        }
+
+        .place-zone.maintenance {
+            fill: #9ca3af;
+            fill-opacity: 0.4;
+            stroke: #6b7280;
+        }
+
+        .place-label {
+            font-size: 14px;
+            font-weight: bold;
+            fill: #1e2937;
+            text-anchor: middle;
+            pointer-events: none;
+        }
+
+        /* Стили для формы бронирования */
+        .booking-form {
+            background: #f9fafb;
+            border-radius: 10px;
+            padding: 20px;
+            margin-top: 20px;
+        }
+
+        .form-row {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 15px;
+            margin-bottom: 15px;
+        }
+
+        .time-inputs {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 15px;
+        }
+
+        .time-slots-container {
+            margin: 15px 0;
+        }
+
+        .time-slots {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+            margin-top: 10px;
+        }
+
+        .time-slot {
+            padding: 8px 16px;
+            background: white;
+            border: 1px solid #e5e7eb;
+            border-radius: 6px;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            font-size: 14px;
+        }
+
+        .time-slot:hover {
+            background: #f3f4f6;
+        }
+
+        .time-slot.selected {
+            background: #3B82F6;
+            color: white;
+            border-color: #3B82F6;
+        }
+
+        .time-slot.unavailable {
+            background: #f3f4f6;
+            color: #9ca3af;
+            cursor: not-allowed;
+            text-decoration: line-through;
+        }
+
+        .time-slot.past {
+            background: #f3f4f6;
+            color: #d1d5db;
+            cursor: not-allowed;
+        }
+
+        .time-info {
+            margin-top: 15px;
+            padding: 15px;
+            background: white;
+            border-radius: 8px;
+            border: 1px solid #e5e7eb;
+        }
+
+        .time-info div {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 5px;
+        }
+
+        .time-info .total {
+            font-weight: 600;
+            font-size: 18px;
+            margin-top: 10px;
+            padding-top: 10px;
+            border-top: 1px solid #e5e7eb;
+        }
+
+        .current-occupation {
+            background: #FEF2F2;
+            border: 1px solid #FECACA;
+            border-radius: 8px;
+            padding: 10px 15px;
+            margin: 10px 0;
+            font-size: 14px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .current-occupation i {
+            color: #EF4444;
+        }
+
+        .action-buttons {
+            display: flex;
+            gap: 10px;
+            margin-top: 20px;
+        }
+
+        .action-buttons .btn {
+            flex: 1;
+        }
+
+        .info-message {
+            background: #EFF6FF;
+            border: 1px solid #BFDBFE;
+            border-radius: 8px;
+            padding: 12px 15px;
+            margin: 15px 0;
+            font-size: 14px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .info-message i {
+            color: #3B82F6;
+        }
+
+        .booking-timeline {
+            display: flex;
+            height: 40px;
+            background: #f3f4f6;
+            border-radius: 8px;
+            overflow: hidden;
+            margin: 15px 0;
+            position: relative;
+        }
+
+        .timeline-slot {
+            flex: 1;
+            height: 100%;
+            border-right: 1px solid #d1d5db;
+            position: relative;
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+
+        .timeline-slot:hover {
+            transform: scaleY(1.1);
+        }
+
+        .timeline-slot.occupied {
+            background: #FCA5A5;
+        }
+
+        .timeline-slot.available {
+            background: #86EFAC;
+        }
+
+        .timeline-slot.past {
+            background: #E5E7EB;
+            cursor: not-allowed;
+        }
+
+        .timeline-label {
+            position: absolute;
+            bottom: -25px;
+            font-size: 12px;
+            color: #6b7280;
+            width: 100%;
+            text-align: center;
+        }
+
+        .loading {
+            display: none;
+            text-align: center;
+            padding: 20px;
+            color: #6b7280;
+        }
+
+        .loading.active {
+            display: block;
+        }
+
+        .form-control:disabled {
+            background-color: #f3f4f6;
+            cursor: not-allowed;
+        }
+
+        .form-control option:disabled {
+            color: #9ca3af;
+        }
+    </style>
+</head>
+<body>
+    <!-- Контейнер для уведомлений -->
+    <div class="flashes-container" id="flashes-container"></div>
+
+    <nav class="navbar">
+        <div class="container">
+            <a href="{{ url_for('index') }}" class="logo">
+                <i class="fas fa-building"></i>
+                <span>Умный Коворкинг</span>
+            </a>
+
+            <div class="nav-menu">
+                {% if current_user.is_authenticated %}
+                    <a href="{{ url_for('dashboard') }}"><i class="fas fa-user"></i> Кабинет</a>
+                    <a href="{{ url_for('map_view') }}" class="active"><i class="fas fa-map"></i> Карта</a>
+                    {% if current_user.is_admin() %}
+                        <a href="{{ url_for('admin_dashboard') }}"><i class="fas fa-cog"></i> Админ</a>
+                    {% endif %}
+                    <a href="{{ url_for('logout') }}" class="logout-btn">
+                        <i class="fas fa-sign-out-alt"></i> Выйти
+                    </a>
+                {% else %}
+                    <a href="{{ url_for('login') }}"><i class="fas fa-sign-in-alt"></i> Вход</a>
+                    <a href="{{ url_for('register') }}" class="register-btn">
+                        <i class="fas fa-user-plus"></i> Регистрация
+                    </a>
+                {% endif %}
+            </div>
+        </div>
+    </nav>
+
+    <div class="container">
+        <div class="map-container">
+            <h1><i class="fas fa-map-marked-alt"></i> Карта пространства</h1>
+            <p>Выберите место на карте для бронирования</p>
+
+            <!-- SVG Карта из mapp -->
+            <div class="floor-plan-container">
+                <svg id="floor-plan" viewBox="0 0 2228 1224" class="floor-plan-svg">
+                    <!-- Фоновое изображение -->
+                    <image href="/static/office_map.svg" width="2228" height="1224" opacity="0.95"/>
+                    <!-- Динамический слой с зонами -->
+                    <g id="places-layer"></g>
+                </svg>
+            </div>
+
+            <!-- Форма бронирования из map -->
+            <div id="booking-form" class="booking-form" style="display: none;">
+                <h3 id="selected-place-name"></h3>
+
+                <div class="info-message" id="occupied-warning" style="display: none;">
+                    <i class="fas fa-info-circle"></i>
+                    Это место сейчас занято, но вы можете забронировать его на другое время.
+                </div>
+
+                <div class="current-occupation" id="current-occupation" style="display: none;">
+                    <i class="fas fa-clock"></i>
+                    <div>
+                        <strong>Занято сейчас до:</strong>
+                        <span id="occupied-until"></span>
+                    </div>
+                </div>
+
+                <div class="form-row">
+                    <div>
+                        <label>Дата бронирования</label>
+                        <input type="date" id="booking-date" class="form-control"
+                               min="{{ today }}" value="{{ today }}">
+                    </div>
+                    <div class="time-slots-container">
+                        <label>Быстрый выбор времени</label>
+                        <div class="time-slots" id="time-slots">
+                            <!-- Слоты времени загружаются динамически -->
+                        </div>
+                    </div>
+                </div>
+
+                <div class="time-inputs">
+                    <div>
+                        <label>Время начала</label>
+                        <select id="start-time" class="form-control">
+                            {% for slot in time_slots %}
+                            <option value="{{ slot.start }}">{{ slot.label }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div>
+                        <label>Время окончания</label>
+                        <select id="end-time" class="form-control">
+                            {% for slot in time_slots %}
+                            <option value="{{ slot.end }}">{{ slot.label }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                </div>
+
+                <div class="booking-timeline" id="booking-timeline">
+                    <!-- Временная линия загружается динамически -->
+                </div>
+
+                <div class="time-info">
+                    <div>
+                        <span>Цена за час:</span>
+                        <span id="hour-price">0 ₽</span>
+                    </div>
+                    <div>
+                        <span>Продолжительность:</span>
+                        <span id="duration-display">0 часов</span>
+                    </div>
+                    <div class="total">
+                        <span>Общая стоимость:</span>
+                        <span id="total-price">0 ₽</span>
+                    </div>
+                </div>
+
+                <div class="loading" id="availability-check">
+                    <i class="fas fa-spinner fa-spin"></i> Проверка доступности...
+                </div>
+
+                <div class="action-buttons">
+                    <button id="check-btn" class="btn btn-outline-primary">
+                        <i class="fas fa-search"></i> Проверить доступность
+                    </button>
+                    <button id="book-btn" class="btn btn-primary">
+                        <i class="fas fa-check"></i> Забронировать
+                    </button>
+                </div>
+
+                <button id="cancel-btn" class="btn btn-outline-secondary btn-block" style="margin-top: 10px;">
+                    <i class="fas fa-times"></i> Отмена
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // ================== ОСНОВНЫЕ ПЕРЕМЕННЫЕ ==================
+        let places = [];
+        let selectedPlace = null;
+        let availableSlots = [];
+        let currentBookings = [];
+
+        document.addEventListener('DOMContentLoaded', function() {
+            loadPlaces();
+            setupEventListeners();
+        });
+
+        // ================== ФУНКЦИИ ДЛЯ УВЕДОМЛЕНИЙ ==================
+        function showAlert(message, type = 'info') {
+            const container = document.getElementById('flashes-container');
+            const alertId = 'alert-' + Date.now();
+
+            const alert = document.createElement('div');
+            alert.className = `alert alert-${type}`;
+            alert.id = alertId;
+
+            alert.innerHTML = `
+                <div class="alert-content">${message}</div>
+                <button class="alert-close" onclick="closeAlert('${alertId}')">&times;</button>
+                <div class="alert-progress"></div>
+            `;
+
+            container.appendChild(alert);
+
+            setTimeout(() => {
+                closeAlert(alertId);
+            }, 5000);
+        }
+
+        function closeAlert(alertId) {
+            const alert = document.getElementById(alertId);
+            if (alert) {
+                alert.classList.add('hiding');
+                setTimeout(() => {
+                    if (alert.parentNode) {
+                        alert.parentNode.removeChild(alert);
+                    }
+                }, 300);
+            }
+        }
+
+        // ================== ОТРИСОВКА SVG КАРТЫ ==================
+        function getStatusClass(status) {
+            return status;
+        }
+
+        function getStatusColor(status) {
+            const colors = {
+                'free': '#22c55e',
+                'occupied': '#ef4444',
+                'reserved': '#f59e0b',
+                'maintenance': '#9ca3af'
+            };
+            return colors[status] || '#9ca3af';
+        }
+        function renderFloorPlan() {
+            const svg = document.getElementById('floor-plan');
+            let layer = document.getElementById('places-layer');
+            if (!layer) {
+                layer = document.createElementNS("http://www.w3.org/2000/svg", "g");
+                layer.setAttribute("id", "places-layer");
+                svg.appendChild(layer);
+            }
+            layer.innerHTML = '';
+
+            places.forEach(place => {
+                const g = document.createElementNS("http://www.w3.org/2000/svg", "g");
+                g.classList.add('place-zone');
+                g.classList.add(getStatusClass(place.status));
+
+                const x = place.x;
+                const y = place.y;
+                const w = place.width;
+                const h = place.height;
+
+                // Прямоугольник зоны
+                const rect = document.createElementNS("http://www.w3.org/2000/svg", "rect");
+                rect.setAttribute("x", x);
+                rect.setAttribute("y", y);
+                rect.setAttribute("width", w);
+                rect.setAttribute("height", h);
+                rect.setAttribute("rx", "12");
+                rect.setAttribute("ry", "12");
+                rect.setAttribute("fill", getStatusColor(place.status));
+                rect.setAttribute("fill-opacity", "0.4");
+                rect.setAttribute("stroke", getStatusColor(place.status));
+                rect.setAttribute("stroke-width", "3");
+                g.appendChild(rect);
+
+                // Название места
+                const text = document.createElementNS("http://www.w3.org/2000/svg", "text");
+                text.setAttribute("x", x + w / 2);
+                text.setAttribute("y", y + h / 2 - 15);
+                text.setAttribute("text-anchor", "middle");
+                text.setAttribute("dominant-baseline", "middle");
+                text.setAttribute("font-size", "24");
+                text.setAttribute("font-weight", "bold");
+                text.setAttribute("fill", "#1e2937");
+                text.setAttribute("pointer-events", "none");
+                text.textContent = place.name;
+                g.appendChild(text);
+
+                // Цена
+                const price = document.createElementNS("http://www.w3.org/2000/svg", "text");
+                price.setAttribute("x", x + w / 2);
+                price.setAttribute("y", y + h / 2 + 15);
+                price.setAttribute("text-anchor", "middle");
+                price.setAttribute("fill", "#6b7280");
+                price.setAttribute("font-size", "20");
+                price.setAttribute("font-weight", "600");
+                price.setAttribute("pointer-events", "none");
+                price.textContent = place.price_per_hour + " ₽/час";
+                g.appendChild(price);
+
+                // Рейтинг
+                let ratingText = null;
+                if (place.rating && place.rating > 0) {
+                    ratingText = document.createElementNS("http://www.w3.org/2000/svg", "text");
+                    ratingText.setAttribute("x", x + w / 2);
+                    ratingText.setAttribute("y", y + h / 2 + 45);
+                    ratingText.setAttribute("text-anchor", "middle");
+                    ratingText.setAttribute("fill", "#f59e0b");
+                    ratingText.setAttribute("font-size", "20");
+                    ratingText.setAttribute("font-weight", "600");
+                    ratingText.setAttribute("pointer-events", "none");
+                    ratingText.textContent = "★ " + place.rating.toFixed(1);
+                    g.appendChild(ratingText);
+                }
+
+                // Клик по зоне
+                g.addEventListener('click', () => selectPlace(place.id));
+
+                layer.appendChild(g);
+            });
+        }
+        // ================== ЗАГРУЗКА ДАННЫХ ==================
+        async function loadPlaces() {
+            try {
+                const response = await fetch('/api/places');
+                places = await response.json();
+                renderFloorPlan();
+            } catch (error) {
+                console.error('Ошибка загрузки мест:', error);
+                showAlert('Не удалось загрузить карту', 'error');
+            }
+        }
+
+        // ================== ВЫБОР МЕСТА ==================
+        async function selectPlace(placeId) {
+            selectedPlace = places.find(p => p.id === placeId);
+            if (!selectedPlace) return;
+
+            document.getElementById('selected-place-name').textContent = selectedPlace.name;
+            document.getElementById('hour-price').textContent = selectedPlace.price_per_hour + ' ₽';
+
+            const occupiedWarning = document.getElementById('occupied-warning');
+            const currentOccupation = document.getElementById('current-occupation');
+            const occupiedUntil = document.getElementById('occupied-until');
+
+            if (selectedPlace.status === 'occupied') {
+                occupiedWarning.style.display = 'flex';
+                currentOccupation.style.display = 'flex';
+                if (selectedPlace.occupied_until) {
+                    occupiedUntil.textContent = selectedPlace.occupied_until;
+                } else {
+                    occupiedUntil.textContent = 'определяется...';
+                }
+            } else {
+                occupiedWarning.style.display = 'none';
+                currentOccupation.style.display = 'none';
+            }
+
+            const today = document.getElementById('booking-date').value;
+            await loadAvailableSlots(placeId, today);
+
+            document.getElementById('booking-form').style.display = 'block';
+            updateCalculation();
+            document.getElementById('booking-form').scrollIntoView({ behavior: 'smooth' });
+        }
+
+        // ================== ЗАГРУЗКА ДОСТУПНЫХ СЛОТОВ ==================
+        async function loadAvailableSlots(placeId, date) {
+            try {
+                document.getElementById('availability-check').classList.add('active');
+
+                const response = await fetch(`/api/available_times/${placeId}?date=${date}`);
+                if (!response.ok) {
+                    throw new Error('Ошибка загрузки доступного времени');
+                }
+                const data = await response.json();
+
+                availableSlots = data.available_slots || [];
+                currentBookings = data.bookings || [];
+                const currentOccupation = data.current_occupation;
+
+                if (currentOccupation) {
+                    const occupiedUntil = document.getElementById('occupied-until');
+                    occupiedUntil.textContent = currentOccupation.occupied_until;
+                }
+
+                renderTimeSlots(data.all_slots || []);
+                renderTimeline(data.all_slots || []);
+                updateTimeSelects(data.all_slots || []);
+
+                document.getElementById('availability-check').classList.remove('active');
+            } catch (error) {
+                console.error('Ошибка загрузки доступного времени:', error);
+                showAlert('Не удалось загрузить доступное время', 'error');
+                document.getElementById('availability-check').classList.remove('active');
+            }
+        }
+
+        function renderTimeSlots(allSlots) {
+            const container = document.getElementById('time-slots');
+            container.innerHTML = '';
+
+            const now = new Date();
+            const today = new Date().toISOString().split('T')[0];
+            const selectedDate = document.getElementById('booking-date').value;
+            const isToday = selectedDate === today;
+            const currentTime = now.getHours().toString().padStart(2, '0') + ':' +
+                              now.getMinutes().toString().padStart(2, '0');
+
+            const popularSlots = [
+                { start: '09:00', end: '11:00', label: 'Утро (9-11)' },
+                { start: '11:00', end: '13:00', label: 'Обед (11-13)' },
+                { start: '13:00', end: '15:00', label: 'День (13-15)' },
+                { start: '15:00', end: '17:00', label: 'Вечер (15-17)' },
+                { start: '17:00', end: '19:00', label: 'Вечер (17-19)' }
+            ];
+
+            popularSlots.forEach(slot => {
+                let isAvailable = true;
+                let isPast = false;
+
+                if (isToday && slot.end <= currentTime) {
+                    isAvailable = false;
+                    isPast = true;
+                } else {
+                    for (const booking of currentBookings) {
+                        if (!(slot.end <= booking.start || slot.start >= booking.end)) {
+                            isAvailable = false;
+                            break;
+                        }
+                    }
+                }
+
+                const slotElement = document.createElement('div');
+                slotElement.className = `time-slot ${isAvailable ? '' : 'unavailable'} ${isPast ? 'past' : ''}`;
+                slotElement.textContent = slot.label;
+                slotElement.dataset.start = slot.start;
+                slotElement.dataset.end = slot.end;
+
+                if (isAvailable && !isPast) {
+                    slotElement.addEventListener('click', function() {
+                        document.getElementById('start-time').value = this.dataset.start;
+                        document.getElementById('end-time').value = this.dataset.end;
+                        updateCalculation();
+
+                        document.querySelectorAll('.time-slot').forEach(s => {
+                            s.classList.remove('selected');
+                        });
+                        this.classList.add('selected');
+                    });
+                }
+
+                container.appendChild(slotElement);
+            });
+        }
+
+        function renderTimeline(allSlots) {
+            const timeline = document.getElementById('booking-timeline');
+            timeline.innerHTML = '';
+
+            const now = new Date();
+            const today = new Date().toISOString().split('T')[0];
+            const selectedDate = document.getElementById('booking-date').value;
+            const isToday = selectedDate === today;
+            const currentHour = now.getHours();
+
+            for (let hour = 8; hour < 22; hour++) {
+                const slot = document.createElement('div');
+                slot.className = 'timeline-slot';
+
+                if (isToday && hour < currentHour) {
+                    slot.classList.add('past');
+                } else {
+                    const hourStart = hour.toString().padStart(2, '0') + ':00';
+                    const hourEnd = (hour + 1).toString().padStart(2, '0') + ':00';
+
+                    let isOccupied = false;
+                    for (const booking of currentBookings) {
+                        if (!(hourEnd <= booking.start || hourStart >= booking.end)) {
+                            isOccupied = true;
+                            break;
+                        }
+                    }
+
+                    if (isOccupied) {
+                        slot.classList.add('occupied');
+                    } else {
+                        slot.classList.add('available');
+                    }
+                }
+
+                if (hour % 2 === 0) {
+                    const label = document.createElement('div');
+                    label.className = 'timeline-label';
+                    label.textContent = hour.toString().padStart(2, '0') + ':00';
+                    slot.appendChild(label);
+                }
+
+                if (!slot.classList.contains('past')) {
+                    slot.addEventListener('click', function() {
+                        if (this.classList.contains('occupied')) {
+                            showAlert('Это время уже занято', 'error');
+                            return;
+                        }
+
+                        const hourStart = hour.toString().padStart(2, '0') + ':00';
+                        const hourEnd = (hour + 1).toString().padStart(2, '0') + ':00';
+
+                        document.getElementById('start-time').value = hourStart;
+                        document.getElementById('end-time').value = hourEnd;
+                        updateCalculation();
+                    });
+                }
+
+                timeline.appendChild(slot);
+            }
+        }
+
+        function updateTimeSelects(allSlots) {
+            const startSelect = document.getElementById('start-time');
+            const endSelect = document.getElementById('end-time');
+
+            const now = new Date();
+            const today = new Date().toISOString().split('T')[0];
+            const selectedDate = document.getElementById('booking-date').value;
+            const isToday = selectedDate === today;
+            const currentTime = now.getHours().toString().padStart(2, '0') + ':' +
+                              now.getMinutes().toString().padStart(2, '0');
+
+            const currentStart = startSelect.value;
+            const currentEnd = endSelect.value;
+
+            startSelect.innerHTML = '';
+            endSelect.innerHTML = '';
+
+            for (let hour = 8; hour < 22; hour++) {
+                for (let minute = 0; minute < 60; minute += 30) {
+                    const time = hour.toString().padStart(2, '0') + ':' + minute.toString().padStart(2, '0');
+
+                    const isPast = isToday && time < currentTime;
+
+                    let isOccupied = false;
+                    for (const booking of currentBookings) {
+                        const slotEnd = add30Minutes(time);
+                        if (!(slotEnd <= booking.start || time >= booking.end)) {
+                            isOccupied = true;
+                            break;
+                        }
+                    }
+
+                    const optionStart = document.createElement('option');
+                    optionStart.value = time;
+                    optionStart.textContent = time;
+                    if (isPast || isOccupied) {
+                        optionStart.disabled = true;
+                    }
+                    startSelect.appendChild(optionStart);
+
+                    const optionEnd = document.createElement('option');
+                    optionEnd.value = time;
+                    optionEnd.textContent = time;
+                    if (isPast || isOccupied) {
+                        optionEnd.disabled = true;
+                    }
+                    endSelect.appendChild(optionEnd);
+                }
+            }
+
+            if (currentStart) {
+                const option = startSelect.querySelector(`option[value="${currentStart}"]`);
+                if (option && !option.disabled) {
+                    startSelect.value = currentStart;
+                }
+            }
+
+            if (currentEnd) {
+                const option = endSelect.querySelector(`option[value="${currentEnd}"]`);
+                if (option && !option.disabled) {
+                    endSelect.value = currentEnd;
+                }
+            }
+
+            if (!startSelect.value) {
+                const firstAvailable = startSelect.querySelector('option:not(:disabled)');
+                if (firstAvailable) {
+                    startSelect.value = firstAvailable.value;
+                } else {
+                    startSelect.value = '09:00';
+                }
+            }
+
+            if (!endSelect.value) {
+                const firstAvailable = endSelect.querySelector('option:not(:disabled)');
+                if (firstAvailable) {
+                    endSelect.value = firstAvailable.value;
+                } else {
+                    endSelect.value = '10:00';
+                }
+            }
+        }
+
+        function add30Minutes(time) {
+            const [hours, minutes] = time.split(':').map(Number);
+            let newHours = hours;
+            let newMinutes = minutes + 30;
+
+            if (newMinutes >= 60) {
+                newHours += 1;
+                newMinutes -= 60;
+            }
+
+            return newHours.toString().padStart(2, '0') + ':' + newMinutes.toString().padStart(2, '0');
+        }
+
+        // ================== РАСЧЕТ СТОИМОСТИ ==================
+        function updateCalculation() {
+            if (!selectedPlace) return;
+
+            const startTime = document.getElementById('start-time').value;
+            const endTime = document.getElementById('end-time').value;
+
+            if (!startTime || !endTime) return;
+
+            const start = new Date(`2000-01-01T${startTime}`);
+            const end = new Date(`2000-01-01T${endTime}`);
+
+            if (start >= end) {
+                document.getElementById('duration-display').textContent = 'Некорректное время';
+                document.getElementById('total-price').textContent = '0 ₽';
+                return;
+            }
+
+            const durationHours = (end - start) / (1000 * 60 * 60);
+            document.getElementById('duration-display').textContent =
+                durationHours.toFixed(1) + ' час' + (durationHours !== 1 ? 'а' : '');
+
+            const totalPrice = selectedPlace.price_per_hour * durationHours;
+            document.getElementById('total-price').textContent = totalPrice.toFixed(2) + ' ₽';
+        }
+
+        // ================== ПРОВЕРКА ДОСТУПНОСТИ ==================
+        async function checkAvailability() {
+            if (!selectedPlace) {
+                showAlert('Выберите место', 'error');
+                return;
+            }
+
+            const date = document.getElementById('booking-date').value;
+            const startTime = document.getElementById('start-time').value;
+            const endTime = document.getElementById('end-time').value;
+
+            const now = new Date();
+            const today = new Date().toISOString().split('T')[0];
+            const currentTime = now.getHours().toString().padStart(2, '0') + ':' +
+                              now.getMinutes().toString().padStart(2, '0');
+
+            if (date === today && startTime < currentTime) {
+                showAlert('Нельзя бронировать на прошедшее время', 'error');
+                return;
+            }
+
+            if (startTime >= endTime) {
+                showAlert('Время окончания должно быть позже времени начала', 'error');
+                return;
+            }
+
+            if (startTime < '08:00' || endTime > '22:00') {
+                showAlert('Бронирование возможно только с 8:00 до 22:00', 'error');
+                return;
+            }
+
+            try {
+                document.getElementById('availability-check').classList.add('active');
+
+                const response = await fetch('/api/check_booking', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        place_id: selectedPlace.id,
+                        date: date,
+                        start_time: startTime,
+                        end_time: endTime
+                    })
+                });
+
+                const data = await response.json();
+
+                if (data.success) {
+                    if (data.is_available) {
+                        showAlert('✅ Время доступно!<br>Стоимость: ' + data.total_price.toFixed(2) + ' ₽', 'success');
+                    } else {
+                        showAlert('❌ ' + data.message, 'error');
+                    }
+                } else {
+                    showAlert('❌ Ошибка: ' + data.error, 'error');
+                }
+            } catch (error) {
+                console.error('Ошибка проверки:', error);
+                showAlert('Не удалось проверить доступность', 'error');
+            } finally {
+                document.getElementById('availability-check').classList.remove('active');
+            }
+        }
+
+        // ================== БРОНИРОВАНИЕ ==================
+        async function bookPlace() {
+            if (!selectedPlace) {
+                showAlert('Выберите место', 'error');
+                return;
+            }
+
+            const date = document.getElementById('booking-date').value;
+            const startTime = document.getElementById('start-time').value;
+            const endTime = document.getElementById('end-time').value;
+
+            const now = new Date();
+            const today = new Date().toISOString().split('T')[0];
+            const currentTime = now.getHours().toString().padStart(2, '0') + ':' +
+                              now.getMinutes().toString().padStart(2, '0');
+
+            if (date === today && startTime < currentTime) {
+                showAlert('Нельзя бронировать на прошедшее время', 'error');
+                return;
+            }
+
+            if (startTime >= endTime) {
+                showAlert('Время окончания должно быть позже времени начала', 'error');
+                return;
+            }
+
+            if (startTime < '08:00' || endTime > '22:00') {
+                showAlert('Бронирование возможно только с 8:00 до 22:00', 'error');
+                return;
+            }
+
+            const bookingData = {
+                place_id: selectedPlace.id,
+                date: date,
+                start_time: startTime,
+                end_time: endTime
+            };
+
+            try {
+                document.getElementById('availability-check').classList.add('active');
+
+                const response = await fetch('/api/create_booking', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify(bookingData)
+                });
+
+                const data = await response.json();
+
+                if (response.ok) {
+                    showAlert('✅ ' + data.message, 'success');
+                    loadPlaces();
+                    document.getElementById('booking-form').style.display = 'none';
+
+                    setTimeout(() => {
+                        window.location.href = '/dashboard';
+                    }, 2000);
+                } else {
+                    showAlert('❌ ' + data.error, 'error');
+                }
+            } catch (error) {
+                console.error('Ошибка бронирования:', error);
+                showAlert('Не удалось создать бронирование', 'error');
+            } finally {
+                document.getElementById('availability-check').classList.remove('active');
+            }
+        }
+
+        // ================== НАСТРОЙКА ОБРАБОТЧИКОВ ==================
+        function setupEventListeners() {
+            document.getElementById('booking-date').addEventListener('change', async function() {
+                if (selectedPlace) {
+                    await loadAvailableSlots(selectedPlace.id, this.value);
+                    updateCalculation();
+                }
+            });
+
+            document.getElementById('start-time').addEventListener('change', updateCalculation);
+            document.getElementById('end-time').addEventListener('change', updateCalculation);
+
+            document.getElementById('check-btn').addEventListener('click', checkAvailability);
+            document.getElementById('book-btn').addEventListener('click', bookPlace);
+
+            document.getElementById('cancel-btn').addEventListener('click', function() {
+                document.getElementById('booking-form').style.display = 'none';
+                selectedPlace = null;
+                document.getElementById('occupied-warning').style.display = 'none';
+                document.getElementById('current-occupation').style.display = 'none';
+            });
+        }
+    </script>
+</body>
+</html>

@@ -1,0 +1,993 @@
+{% extends "base.html" %}
+
+{% block title %}Управление бронированиями - Умный Коворкинг{% endblock %}
+
+{% block content %}
+<div class="admin-container">
+    <div class="admin-header">
+        <div class="header-left">
+            <h1><i class="fas fa-calendar-alt"></i> Управление бронированиями</h1>
+            <p class="text-muted mb-0">Всего бронирований: {{ bookings|length }}</p>
+        </div>
+        <div class="header-right">
+            <a href="{{ url_for('admin_dashboard') }}" class="btn btn-secondary">
+                <i class="fas fa-arrow-left"></i> Назад
+            </a>
+            <button onclick="refreshPage()" class="btn btn-outline-primary ml-2">
+                <i class="fas fa-sync-alt"></i>
+            </button>
+        </div>
+    </div>
+
+    <!-- Фильтры -->
+    <div class="filter-container mb-4">
+        <div class="filter-buttons">
+            <a href="{{ url_for('admin_bookings', filter='all') }}"
+               class="filter-btn {% if current_filter == 'all' %}active{% endif %}">
+                <i class="fas fa-list"></i> Все
+            </a>
+            <a href="{{ url_for('admin_bookings', filter='active') }}"
+               class="filter-btn {% if current_filter == 'active' %}active{% endif %}">
+                <i class="fas fa-play-circle"></i> Активные
+            </a>
+            <a href="{{ url_for('admin_bookings', filter='completed') }}"
+               class="filter-btn {% if current_filter == 'completed' %}active{% endif %}">
+                <i class="fas fa-check-circle"></i> Завершенные
+            </a>
+            <a href="{{ url_for('admin_bookings', filter='cancelled') }}"
+               class="filter-btn {% if current_filter == 'cancelled' %}active{% endif %}">
+                <i class="fas fa-times-circle"></i> Отмененные
+            </a>
+        </div>
+
+        <div class="filter-stats">
+            <span class="stat-badge">
+                <i class="fas fa-clock"></i> Активных: {{ active_count }}
+            </span>
+            <span class="stat-badge">
+                <i class="fas fa-check"></i> Завершенных: {{ completed_count }}
+            </span>
+            <span class="stat-badge">
+                <i class="fas fa-ban"></i> Отмененных: {{ cancelled_count }}
+            </span>
+        </div>
+    </div>
+
+    <!-- Статистика в карточках -->
+    <div class="stats-grid mb-4">
+        <div class="stat-card">
+            <div class="stat-icon">
+                <i class="fas fa-calendar-check"></i>
+            </div>
+            <div class="stat-content">
+                <div class="stat-value">{{ bookings|length if bookings else 0 }}</div>
+                <div class="stat-label">Всего бронирований</div>
+            </div>
+        </div>
+        <div class="stat-card">
+            <div class="stat-icon">
+                <i class="fas fa-users"></i>
+            </div>
+            <div class="stat-content">
+                <div class="stat-value">{{ unique_users }}</div>
+                <div class="stat-label">Уникальных пользователей</div>
+            </div>
+        </div>
+        <div class="stat-card">
+            <div class="stat-icon">
+                <i class="fas fa-hourglass-half"></i>
+            </div>
+            <div class="stat-content">
+                <div class="stat-value">{{ expiring_soon_count }}</div>
+                <div class="stat-label">Истекают сегодня</div>
+            </div>
+        </div>
+    </div>
+
+
+
+    <!-- Таблица бронирований -->
+    <div class="table-responsive">
+        <table class="admin-table">
+            <thead>
+                <tr>
+                    <th width="60">ID</th>
+                    <th>Пользователь</th>
+                    <th>Место</th>
+                    <th width="140">Дата</th>
+                    <th width="180">Время</th>
+                    <th width="120">Стоимость</th>
+                    <th width="140">Статус</th>
+                    <th width="150" class="text-center">Действия</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% if bookings %}
+                    {% for booking in bookings %}
+                    <tr class="{% if booking.status == 'active' %}active-row{% elif booking.status == 'cancelled' %}cancelled-row{% endif %}">
+                        <td>
+                            <div class="booking-id">
+                                <strong>#{{ booking.id }}</strong>
+                                <small class="text-muted">{{ booking.created_at.strftime('%d.%m') }}</small>
+                            </div>
+                        </td>
+                        <td>
+                            <div class="user-info">
+                                <div class="user-avatar">
+                                    {{ booking.user.username[0]|upper }}
+                                </div>
+                                <div class="user-details">
+                                    <strong class="user-name">{{ booking.user.username }}</strong>
+                                    <div class="user-email">{{ booking.user.email }}</div>
+                                    {% if booking.user.phone %}
+                                    <small class="user-phone">{{ booking.user.phone }}</small>
+                                    {% endif %}
+                                </div>
+                            </div>
+                        </td>
+                        <td>
+                            <div class="place-info">
+                                <div class="place-name">{{ booking.place.name }}</div>
+                                <div class="place-meta">
+                                    <span class="place-type-badge place-type-{{ booking.place.type }}">
+                                        {% if booking.place.type == 'desk' %}
+                                            <i class="fas fa-chair"></i> Стол
+                                        {% elif booking.place.type == 'room' %}
+                                            <i class="fas fa-door-closed"></i> Переговорная
+                                        {% elif booking.place.type == 'office' %}
+                                            <i class="fas fa-building"></i> Офис
+                                        {% endif %}
+                                    </span>
+                                    <small class="text-muted ml-2">{{ booking.place.price_per_hour }} ₽/час</small>
+                                </div>
+                            </div>
+                        </td>
+                        <td>
+                            <div class="date-cell">
+                                <strong>{{ booking.booking_date.strftime('%d.%m.%Y') }}</strong>
+                                <small class="text-muted d-block">
+                                    {{ booking.booking_date.strftime('%A')|replace('Monday', 'Понедельник')|replace('Tuesday', 'Вторник')|replace('Wednesday', 'Среда')|replace('Thursday', 'Четверг')|replace('Friday', 'Пятница')|replace('Saturday', 'Суббота')|replace('Sunday', 'Воскресенье') }}
+                                </small>
+                            </div>
+                        </td>
+                        <td>
+                            <div class="time-cell">
+                                <div class="time-range">
+                                    <i class="far fa-clock"></i>
+                                    {{ booking.start_time.strftime('%H:%M') }} - {{ booking.end_time.strftime('%H:%M') }}
+                                </div>
+                                <div class="duration">
+                                    <small class="text-muted">{{ "%.1f"|format(booking.duration_hours) }} ч</small>
+                                </div>
+                                {% if booking.status == 'active' %}
+                                <div class="time-progress">
+                                    <div class="progress">
+                                        <div class="progress-bar" style="width: {{ booking.time_progress if booking.time_progress else 0 }}%"></div>
+                                    </div>
+                                    <small class="text-muted">{{ booking.time_remaining if booking.time_remaining else 'Истекло' }}</small>
+                                </div>
+                                {% endif %}
+                            </div>
+                        </td>
+                        <td>
+                            <div class="price-cell">
+                                <strong class="price">{{ "%.0f"|format(booking.total_price) }} ₽</strong>
+                                <small class="text-muted d-block">{{ "%.0f"|format(booking.total_price / booking.duration_hours if booking.duration_hours > 0 else 0) }} ₽/час</small>
+                            </div>
+                        </td>
+                        <td>
+                            <div class="status-cell">
+                                {% if booking.status == 'active' %}
+                                    <span class="status-badge status-active">
+                                        <i class="fas fa-play-circle"></i> Активно
+                                        {% if booking.is_expiring_soon %}
+                                        <span class="expiring-badge" title="Истекает менее чем через час"><i class="fas fa-hourglass-end"></i></span>
+                                        {% endif %}
+                                    </span>
+                                {% elif booking.status == 'completed' %}
+                                    <span class="status-badge status-completed">
+                                        <i class="fas fa-check-circle"></i> Завершено
+                                    </span>
+                                {% elif booking.status == 'cancelled' %}
+                                    <span class="status-badge status-cancelled">
+                                        <i class="fas fa-times-circle"></i> Отменено
+                                    </span>
+                                {% endif %}
+
+                                {% if booking.rating %}
+                                <div class="rating-stars mt-1">
+                                    {% for i in range(5) %}
+                                        {% if i < booking.rating.score %}
+                                            <i class="fas fa-star text-warning"></i>
+                                        {% else %}
+                                            <i class="far fa-star text-muted"></i>
+                                        {% endif %}
+                                    {% endfor %}
+                                </div>
+                                {% endif %}
+                            </div>
+                        </td>
+                        <td>
+                            <div class="action-buttons">
+                            {% if booking.status == 'active' %}
+                                <button class="btn btn-sm btn-outline-primary"
+                                        onclick="extendBooking({{ booking.id }})"
+                                        title="Продлить бронирование">
+                                    <i class="fas fa-plus"></i>
+                                </button>
+                                <form action="{{ url_for('admin_cancel_booking', booking_id=booking.id) }}"
+                                    method="POST" class="d-inline">
+                                    <button type="submit"
+                                            class="btn btn-sm btn-outline-danger"
+                                            onclick="return confirm('Отменить бронирование?')"
+                                            title="Отменить бронирование">
+                                        <i class="fas fa-ban"></i>
+                                    </button>
+                                </form>
+                            {% elif booking.status == 'cancelled' %}
+                                <button class="btn btn-sm btn-outline-success"
+                                        onclick="restoreBooking({{ booking.id }})"
+                                        title="Восстановить бронирование">
+                                    <i class="fas fa-redo"></i>
+                                </button>
+                            {% endif %}
+                        </div>
+                    </td>
+                </tr>
+                {% endfor %}
+                {% else %}
+                    <tr>
+                        <td colspan="8" class="text-center py-5">
+                            <div class="empty-state">
+                                <i class="fas fa-calendar-times fa-4x text-muted mb-3"></i>
+                                <h4>Бронирований нет</h4>
+                                <p class="text-muted">В системе пока нет бронирований по выбранному фильтру</p>
+                                <a href="{{ url_for('admin_bookings', filter='all') }}" class="btn btn-primary mt-2">
+                                    <i class="fas fa-eye"></i> Показать все бронирования
+                                </a>
+                            </div>
+                        </td>
+                    </tr>
+                {% endif %}
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<style>
+.admin-container {
+    max-width: 1800px;
+    margin: 0 auto;
+    padding: 25px;
+}
+
+.admin-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 30px;
+    padding-bottom: 20px;
+    border-bottom: 1px solid #e5e7eb;
+}
+
+.header-left h1 {
+    margin: 0;
+    color: #333;
+    font-size: 28px;
+    font-weight: 700;
+}
+
+.header-left h1 i {
+    margin-right: 12px;
+    color: #3B82F6;
+}
+
+.header-left p {
+    margin-top: 8px;
+    font-size: 15px;
+}
+
+.filter-container {
+    background: white;
+    border-radius: 12px;
+    padding: 20px;
+    box-shadow: 0 2px 10px rgba(0,0,0,0.05);
+    margin-bottom: 30px;
+    border: 1px solid #e5e7eb;
+}
+
+.filter-buttons {
+    display: flex;
+    gap: 10px;
+    margin-bottom: 15px;
+}
+
+.filter-btn {
+    padding: 10px 20px;
+    border-radius: 8px;
+    background: #f8fafc;
+    border: 1px solid #e5e7eb;
+    color: #6b7280;
+    text-decoration: none;
+    font-size: 14px;
+    font-weight: 500;
+    transition: all 0.2s;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.filter-btn:hover {
+    background: #f1f5f9;
+    color: #3B82F6;
+    border-color: #d1d5db;
+}
+
+.filter-btn.active {
+    background: #3B82F6;
+    color: white;
+    border-color: #3B82F6;
+}
+
+.filter-btn.active i {
+    color: white;
+}
+
+.filter-stats {
+    display: flex;
+    gap: 15px;
+    flex-wrap: wrap;
+}
+
+.stat-badge {
+    padding: 8px 15px;
+    background: #f8fafc;
+    border-radius: 6px;
+    font-size: 14px;
+    color: #6b7280;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+
+.stat-badge i {
+    color: #9ca3af;
+}
+
+/* Карточки статистики */
+.stats-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+    gap: 20px;
+    margin-bottom: 30px;
+}
+
+.stat-card {
+    background: white;
+    border-radius: 12px;
+    padding: 25px;
+    border: 1px solid #e5e7eb;
+    display: flex;
+    align-items: center;
+    gap: 20px;
+    transition: all 0.3s ease;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+}
+
+.stat-card:hover {
+    transform: translateY(-3px);
+    box-shadow: 0 8px 25px rgba(0,0,0,0.1);
+    border-color: #3B82F6;
+}
+
+.stat-icon {
+    width: 60px;
+    height: 60px;
+    border-radius: 12px;
+    background: linear-gradient(135deg, #3B82F6, #8B5CF6);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: white;
+    font-size: 24px;
+}
+
+.stat-content {
+    flex: 1;
+}
+
+.stat-value {
+    font-size: 32px;
+    font-weight: 800;
+    color: #1f2937;
+    margin-bottom: 5px;
+    line-height: 1;
+}
+
+.stat-label {
+    font-size: 14px;
+    color: #6b7280;
+    font-weight: 500;
+}
+
+/* Системное уведомление */
+.system-notice {
+    background: linear-gradient(135deg, #E0F2FE, #BAE6FD);
+    border: 1px solid #BAE6FD;
+    border-radius: 12px;
+    padding: 20px;
+    margin-bottom: 30px;
+}
+
+.notice-content {
+    display: flex;
+    gap: 15px;
+    align-items: flex-start;
+}
+
+.notice-content i {
+    font-size: 24px;
+    color: #0C4A6E;
+    margin-top: 2px;
+}
+
+.notice-content strong {
+    display: block;
+    color: #0C4A6E;
+    margin-bottom: 5px;
+    font-size: 16px;
+}
+
+.notice-content p {
+    margin: 0;
+    color: #0C4A6E;
+    font-size: 14px;
+    line-height: 1.5;
+    opacity: 0.9;
+}
+
+/* Таблица */
+.admin-table {
+    width: 100%;
+    background: white;
+    border-radius: 12px;
+    overflow: hidden;
+    box-shadow: 0 4px 20px rgba(0,0,0,0.08);
+    border: 1px solid #e5e7eb;
+}
+
+.admin-table thead {
+    background: linear-gradient(135deg, #3B82F6, #8B5CF6);
+}
+
+.admin-table th {
+    padding: 18px 15px;
+    text-align: left;
+    font-weight: 600;
+    color: white;
+    font-size: 14px;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.admin-table td {
+    padding: 16px 15px;
+    border-bottom: 1px solid #f1f5f9;
+    vertical-align: top;
+}
+
+.admin-table tbody tr {
+    transition: all 0.2s;
+}
+
+.admin-table tbody tr:hover {
+    background: #f8fafc;
+}
+
+.admin-table tbody tr.active-row {
+    background: #f0f9ff;
+}
+
+.admin-table tbody tr.cancelled-row {
+    opacity: 0.8;
+    background: #fef2f2;
+}
+
+/* Стили для ячеек */
+.booking-id {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+}
+
+.booking-id strong {
+    font-size: 16px;
+    color: #1f2937;
+    font-weight: 600;
+}
+
+.booking-id small {
+    font-size: 12px;
+    color: #9ca3af;
+}
+
+.user-info {
+    display: flex;
+    align-items: flex-start;
+    gap: 12px;
+    min-width: 200px;
+}
+
+.user-avatar {
+    width: 36px;
+    height: 36px;
+    background: linear-gradient(135deg, #3B82F6, #8B5CF6);
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: white;
+    font-weight: 600;
+    font-size: 14px;
+    flex-shrink: 0;
+}
+
+.user-details {
+    flex: 1;
+    min-width: 0;
+}
+
+.user-name {
+    display: block;
+    font-size: 15px;
+    font-weight: 600;
+    color: #1f2937;
+    margin-bottom: 2px;
+}
+
+.user-email {
+    font-size: 13px;
+    color: #6b7280;
+    margin-bottom: 2px;
+}
+
+.user-phone {
+    font-size: 12px;
+    color: #9ca3af;
+}
+
+.place-info {
+    min-width: 180px;
+}
+
+.place-name {
+    font-size: 15px;
+    font-weight: 600;
+    color: #1f2937;
+    margin-bottom: 6px;
+}
+
+.place-meta {
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 8px;
+}
+
+.place-type-badge {
+    padding: 4px 10px;
+    border-radius: 20px;
+    font-size: 12px;
+    font-weight: 500;
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+}
+
+.place-type-desk {
+    background: #D1FAE5;
+    color: #065F46;
+}
+
+.place-type-room {
+    background: #DBEAFE;
+    color: #1E40AF;
+}
+
+.place-type-office {
+    background: #EDE9FE;
+    color: #5B21B6;
+}
+
+.date-cell {
+    min-width: 120px;
+}
+
+.date-cell strong {
+    display: block;
+    font-size: 15px;
+    color: #1f2937;
+    margin-bottom: 4px;
+}
+
+.date-cell small {
+    font-size: 13px;
+    color: #6b7280;
+}
+
+.time-cell {
+    min-width: 180px;
+}
+
+.time-range {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 15px;
+    color: #1f2937;
+    font-weight: 500;
+    margin-bottom: 6px;
+}
+
+.time-range i {
+    color: #9ca3af;
+    font-size: 14px;
+}
+
+.duration {
+    margin-bottom: 8px;
+}
+
+.time-progress {
+    margin-top: 10px;
+}
+
+.progress {
+    height: 6px;
+    background: #e5e7eb;
+    border-radius: 3px;
+    overflow: hidden;
+    margin-bottom: 4px;
+}
+
+.progress-bar {
+    height: 100%;
+    background: linear-gradient(90deg, #10B981, #3B82F6);
+    border-radius: 3px;
+    transition: width 0.3s ease;
+}
+
+.price-cell {
+    min-width: 100px;
+}
+
+.price {
+    display: block;
+    font-size: 18px;
+    font-weight: 700;
+    color: #059669;
+    margin-bottom: 4px;
+}
+
+.status-cell {
+    min-width: 120px;
+}
+
+.status-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 6px 12px;
+    border-radius: 20px;
+    font-size: 12px;
+    font-weight: 600;
+    width: fit-content;
+}
+
+.status-active {
+    background: #D1FAE5;
+    color: #065F46;
+    border: 1px solid #A7F3D0;
+}
+
+.status-completed {
+    background: #E0F2FE;
+    color: #0C4A6E;
+    border: 1px solid #BAE6FD;
+}
+
+.status-cancelled {
+    background: #FEE2E2;
+    color: #991B1B;
+    border: 1px solid #FECACA;
+}
+
+.expiring-badge {
+    background: #FEF3C7;
+    color: #92400E;
+    padding: 2px 6px;
+    border-radius: 10px;
+    font-size: 10px;
+    margin-left: 4px;
+}
+
+.rating-stars {
+    display: flex;
+    gap: 2px;
+}
+
+.rating-stars i {
+    font-size: 11px;
+}
+
+.action-buttons {
+    display: flex;
+    gap: 5px;
+    justify-content: center;
+    flex-wrap: wrap;
+}
+
+.btn-sm {
+    padding: 6px 10px;
+    font-size: 12px;
+    border-radius: 6px;
+    min-width: 32px;
+}
+
+.btn-outline-primary {
+    border: 1px solid #3B82F6;
+    color: #3B82F6;
+}
+
+.btn-outline-primary:hover {
+    background: #3B82F6;
+    color: white;
+}
+
+.btn-outline-danger {
+    border: 1px solid #dc3545;
+    color: #dc3545;
+}
+
+.btn-outline-danger:hover {
+    background: #dc3545;
+    color: white;
+}
+
+.btn-outline-secondary {
+    border: 1px solid #6c757d;
+    color: #6c757d;
+}
+
+.btn-outline-secondary:hover {
+    background: #6c757d;
+    color: white;
+}
+
+.btn-outline-success {
+    border: 1px solid #28a745;
+    color: #28a745;
+}
+
+.btn-outline-success:hover {
+    background: #28a745;
+    color: white;
+}
+
+.btn-outline-info {
+    border: 1px solid #17a2b8;
+    color: #17a2b8;
+}
+
+.btn-outline-info:hover {
+    background: #17a2b8;
+    color: white;
+}
+
+.btn-outline-warning {
+    border: 1px solid #ffc107;
+    color: #ffc107;
+}
+
+.btn-outline-warning:hover {
+    background: #ffc107;
+    color: #212529;
+}
+
+.empty-state {
+    padding: 50px 20px;
+    text-align: center;
+}
+
+.empty-state h4 {
+    color: #6b7280;
+    margin-bottom: 10px;
+    font-size: 20px;
+}
+
+.empty-state p {
+    color: #9ca3af;
+    font-size: 15px;
+    margin-bottom: 20px;
+}
+
+/* Адаптивность */
+@media (max-width: 1200px) {
+    .admin-container {
+        padding: 20px;
+    }
+
+    .admin-header {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 15px;
+    }
+
+    .header-right {
+        width: 100%;
+        display: flex;
+        justify-content: flex-end;
+    }
+}
+
+@media (max-width: 992px) {
+    .admin-table {
+        display: block;
+        overflow-x: auto;
+    }
+
+    .stats-grid {
+        grid-template-columns: repeat(2, 1fr);
+    }
+}
+
+@media (max-width: 768px) {
+    .stats-grid {
+        grid-template-columns: 1fr;
+    }
+
+    .filter-buttons {
+        flex-wrap: wrap;
+    }
+
+    .filter-stats {
+        flex-direction: column;
+        gap: 8px;
+    }
+
+    .stat-badge {
+        width: 100%;
+        justify-content: center;
+    }
+}
+
+@media (max-width: 576px) {
+    .admin-container {
+        padding: 15px;
+    }
+
+    .admin-header h1 {
+        font-size: 24px;
+    }
+
+    .filter-btn {
+        padding: 8px 15px;
+        font-size: 13px;
+    }
+
+    .action-buttons {
+        flex-direction: column;
+        align-items: center;
+    }
+
+    .btn-sm {
+        width: 100%;
+        margin-bottom: 5px;
+    }
+}
+</style>
+
+<script>
+function refreshPage() {
+    window.location.reload();
+}
+
+function extendBooking(bookingId) {
+    if (confirm('Продлить бронирование на 1 час?')) {
+        fetch(`/admin/booking/${bookingId}/extend`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({ hours: 1 })
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                alert('Бронирование успешно продлено');
+                refreshPage();
+            } else {
+                alert('Ошибка: ' + data.error);
+            }
+        })
+        .catch(error => {
+            console.error('Ошибка:', error);
+            alert('Произошла ошибка при продлении бронирования');
+        });
+    }
+}
+
+function restoreBooking(bookingId) {
+    if (confirm('Восстановить отмененное бронирование?')) {
+        fetch(`/admin/booking/${bookingId}/restore`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            }
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                alert('Бронирование восстановлено');
+                refreshPage();
+            } else {
+                alert('Ошибка: ' + data.error);
+            }
+        })
+        .catch(error => {
+            console.error('Ошибка:', error);
+            alert('Произошла ошибка при восстановлении бронирования');
+        });
+    }
+}
+
+function showDetails(bookingId) {
+    alert('Детали бронирования #' + bookingId + '\nФункция детального просмотра будет реализована в следующем обновлении.');
+}
+
+function viewRating(bookingId) {
+    alert('Просмотр оценки для бронирования #' + bookingId);
+}
+
+function notifyUser(userId) {
+    const message = prompt('Введите сообщение для пользователя:');
+    if (message) {
+        fetch(`/admin/user/${userId}/notify`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({ message: message })
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                alert('Уведомление отправлено');
+            } else {
+                alert('Ошибка: ' + data.error);
+            }
+        })
+        .catch(error => {
+            console.error('Ошибка:', error);
+            alert('Произошла ошибка при отправке уведомления');
+        });
+    }
+}
+
+// Автоматическое обновление прогресса времени каждую минуту
+setInterval(() => {
+    document.querySelectorAll('.progress-bar').forEach(progress => {
+        // Здесь можно добавить логику обновления прогресса
+        // Например, вычислять оставшееся время на сервере
+    });
+}, 60000);
+
+// Инициализация tooltips
+document.addEventListener('DOMContentLoaded', function() {
+    // Инициализация tooltip'ов Bootstrap если используется
+    if (typeof $ !== 'undefined') {
+        $('[title]').tooltip();
+    }
+});
+</script>
+{% endblock %}
