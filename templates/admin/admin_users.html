@@ -35,6 +35,7 @@
                     <td>
                         <span class="role-badge role-{{ user.role }}">
                             {% if user.role == 'admin' %}Администратор
+                            {% elif user.role == 'manager' %}Менеджер
                             {% else %}Клиент{% endif %}
                         </span>
                     </td>
@@ -51,10 +52,14 @@
                                     {% if user.is_active %}Деактивировать{% else %}Активировать{% endif %}
                                 </button>
                             </form>
-                            <form action="{{ url_for('admin_make_admin', user_id=user.id) }}" method="POST" style="display: inline;">
-                                <button type="submit" class="btn btn-sm {% if user.role == 'admin' %}btn-secondary{% else %}btn-primary{% endif %}">
-                                    {% if user.role == 'admin' %}Убрать админ{% else %}Сделать админом{% endif %}
-                                </button>
+                            <form action="{{ url_for('admin_set_user_role', user_id=user.id, role='admin') }}" method="POST" style="display: inline;">
+                                <button type="submit" class="btn btn-sm {% if user.role == 'admin' %}btn-secondary{% else %}btn-primary{% endif %}" {% if user.role == 'admin' %}disabled{% endif %}>Администратор</button>
+                            </form>
+                            <form action="{{ url_for('admin_set_user_role', user_id=user.id, role='manager') }}" method="POST" style="display: inline;">
+                                <button type="submit" class="btn btn-sm {% if user.role == 'manager' %}btn-secondary{% else %}btn-primary{% endif %}" {% if user.role == 'manager' %}disabled{% endif %}>Менеджер</button>
+                            </form>
+                            <form action="{{ url_for('admin_set_user_role', user_id=user.id, role='client') }}" method="POST" style="display: inline;">
+                                <button type="submit" class="btn btn-sm {% if user.role == 'client' %}btn-secondary{% else %}btn-primary{% endif %}" {% if user.role == 'client' %}disabled{% endif %}>Клиент</button>
                             </form>
                         </div>
                     </td>
@@ -81,6 +86,11 @@
 .role-client {
     background: #D1FAE5;
     color: #065F46;
+}
+
+.role-manager {
+    background: #DBEAFE;
+    color: #1E40AF;
 }
 </style>
 {% endblock %}

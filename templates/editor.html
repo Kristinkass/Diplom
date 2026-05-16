@@ -1,0 +1,1207 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<title>Редактор планировки — Умный Коворкинг</title>
+<link rel="stylesheet" href="{{ url_for('static', filename='css/bootstrap.min.css') }}">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+<style>
+  * { box-sizing: border-box; }
+  body { margin:0; font-family: -apple-system, system-ui, Segoe UI, Roboto, sans-serif; background:#0f172a; color:#e2e8f0; }
+  .topbar { background:#1e293b; padding:10px 20px; display:flex; align-items:center; gap:14px; border-bottom:2px solid #334155; flex-wrap:wrap; }
+  .topbar h1 { margin:0; font-size:18px; }
+  .topbar .spacer { flex:1; }
+  .topbar a, .topbar button { color:#e2e8f0; text-decoration:none; padding:6px 12px; border-radius:6px; background:#334155; border:none; cursor:pointer; font-size:13px; }
+  .topbar a:hover, .topbar button:hover { background:#475569; }
+  .topbar button.active { background:#f59e0b; color:#1e293b; }
+
+  .layout { display:flex; height: calc(100vh - 50px); }
+  .sidebar { width: 220px; background:#1e293b; border-right:2px solid #334155; padding:12px; overflow-y:auto; }
+  .sidebar h3 { font-size:12px; color:#94a3b8; text-transform:uppercase; letter-spacing:1px; margin:14px 0 8px; }
+  .tpl { background:#334155; border:2px solid #475569; border-radius:8px; padding:8px; margin-bottom:8px; cursor:grab; user-select:none; transition: all .15s; }
+  .tpl:hover { border-color:#f59e0b; background:#3d4a5e; }
+  .tpl-name { font-size:12px; font-weight:600; text-align:center; }
+  .tpl-meta { font-size:10px; color:#94a3b8; text-align:center; }
+
+  .canvas-wrap { flex:1; position:relative; overflow:auto; background:#0f172a; }
+  #canvas { display:block; background:#f1f5f9; }
+
+  .props { width: 280px; background:#1e293b; border-left:2px solid #334155; padding:12px; overflow-y:auto; }
+  .props h3 { font-size:13px; color:#f1f5f9; margin:0 0 10px; }
+  .props .field { margin-bottom:10px; }
+  .props label { display:block; font-size:11px; color:#94a3b8; margin-bottom:3px; }
+  .props input, .props select { width:100%; padding:6px 8px; background:#0f172a; border:1px solid #334155; border-radius:6px; color:#e2e8f0; font-size:13px; }
+  .props .row { display:flex; gap:8px; }
+  .props .row > * { flex:1; }
+  .props .empty { color:#64748b; font-size:12px; text-align:center; padding:20px 10px; }
+  .btn-block { display:block; width:100%; padding:8px; border:none; border-radius:6px; cursor:pointer; font-weight:600; margin-top:6px; font-size:13px; }
+  .btn-block.del { background:#ef4444; color:white; }
+  .suggestions { margin-top:14px; padding-top:12px; border-top:1px solid #334155; }
+  .suggestions .metric { background:#0f172a; border:1px solid #334155; border-radius:8px; padding:8px; margin-bottom:8px; font-size:12px; color:#cbd5e1; }
+  .suggestion-card { background:#334155; border:1px solid #475569; border-radius:8px; padding:8px; margin-bottom:8px; }
+  .suggestion-card strong { display:block; color:#f8fafc; font-size:12px; margin-bottom:3px; }
+  .suggestion-card span { display:block; color:#94a3b8; font-size:11px; line-height:1.35; }
+  .suggestion-card button { width:100%; margin-top:8px; border:none; border-radius:6px; padding:6px; background:#22c55e; color:white; font-weight:700; cursor:pointer; font-size:12px; }
+
+  .toast { position:fixed; top:60px; right:20px; padding:10px 16px; border-radius:8px; box-shadow:0 6px 20px rgba(0,0,0,.4); z-index:1000; font-size:13px; font-weight:500; }
+  .toast.success { background:#10b981; color:white; }
+  .toast.error { background:#ef4444; color:white; }
+  .toast.info { background:#0ea5e9; color:white; }
+
+  .zoombar { position:fixed; bottom:20px; right:20px; display:flex; flex-direction:column; gap:4px; z-index:1000; }
+  .zoombar button { width:36px; height:36px; border-radius:8px; border:none; background:#1e293b; color:white; cursor:pointer; font-size:16px; box-shadow:0 4px 12px rgba(0,0,0,.4); }
+
+  .place-rect { cursor:move; }
+  .place-rect:hover { filter: brightness(1.08); }
+  .place-rect.selected { stroke:#f59e0b !important; stroke-width:4 !important; stroke-dasharray:6,3; }
+  .resize-handle { fill:#f59e0b; stroke:#1e293b; stroke-width:2; cursor:nwse-resize; }
+  .wall-line { stroke:#1e293b; stroke-width:8; stroke-linecap:round; cursor:pointer; }
+  .wall-line:hover { stroke:#dc2626; }
+  .wall-line.protected { stroke:#475569; cursor: not-allowed; }
+  .wall-line.protected:hover { stroke:#475569; }
+  .door-arc { fill:none; stroke:#94a3b8; stroke-width:2; stroke-dasharray:4,3; cursor:pointer; }
+  .door-arc:hover { stroke:#dc2626; }
+  .door-gap { stroke:#f1f5f9; stroke-width:10; stroke-linecap:round; }
+
+  .hint { background:#0ea5e9; color:white; padding:8px 12px; border-radius:6px; font-size:11px; margin-bottom:10px; line-height:1.4; }
+  .mode-indicator { padding:4px 10px; border-radius:6px; font-size:12px; font-weight:600; background:#0ea5e9; color:white; }
+</style>
+</head>
+<body>
+
+<div class="topbar">
+  <h1><i class="fas fa-pencil-ruler"></i> Редактор планировки</h1>
+  <span id="mode-label" class="mode-indicator" style="display:none;">Режим стен</span>
+  <div class="spacer"></div>
+  <button onclick="setFloor(1)" id="floor-btn-1">Этаж 1</button>
+  <button onclick="setFloor(2)" id="floor-btn-2">Этаж 2</button>
+  <button onclick="setFloor(3)" id="floor-btn-3">Этаж 3</button>
+  <button onclick="toggleWallMode()">Стены</button>
+  <button onclick="toggleDoorMode()">Двери</button>
+  <button onclick="loadAll()"><i class="fas fa-sync"></i> Обновить</button>
+  <a href="{{ url_for('admin_dashboard') }}"><i class="fas fa-arrow-left"></i> В админку</a>
+  <a href="{{ url_for('map_view') }}"><i class="fas fa-map"></i> На карту</a>
+</div>
+
+<div class="layout">
+  <aside class="sidebar">
+    <div class="hint">Перетащите шаблон на холст.</div>
+    <h3>Столы (desk)</h3>
+    <div class="tpl" data-kind="desk" data-cap="1" data-w="100" data-h="75" data-price="250" data-name="Стол складной" data-loc="1Б">
+      <div class="tpl-name">1 место · складной</div><div class="tpl-meta">100×75 · 250 ₽/ч</div>
+    </div>
+    <div class="tpl" data-kind="desk" data-cap="1" data-w="200" data-h="125" data-price="250" data-name="Стол статичный" data-loc="1Б">
+      <div class="tpl-name">1 место · статичный</div><div class="tpl-meta">200×125 · 250 ₽/ч</div>
+    </div>
+    <div class="tpl" data-kind="desk" data-cap="2" data-w="220" data-h="125" data-price="250" data-name="Стол на 2" data-loc="1Б">
+      <div class="tpl-name">2 места</div><div class="tpl-meta">220×125 · 250 ₽/ч</div>
+    </div>
+    <div class="tpl" data-kind="desk" data-cap="4" data-w="260" data-h="150" data-price="250" data-name="Стол на 4" data-loc="1Б">
+      <div class="tpl-name">4 места</div><div class="tpl-meta">260×150 · 250 ₽/ч</div>
+    </div>
+    <div class="tpl" data-kind="desk" data-cap="6" data-w="300" data-h="160" data-price="250" data-name="Стол на 6" data-loc="1Б">
+      <div class="tpl-name">6 мест</div><div class="tpl-meta">300×160 · 250 ₽/ч</div>
+    </div>
+    <div class="tpl" data-kind="desk" data-cap="8" data-w="340" data-h="180" data-price="250" data-name="Стол на 8" data-loc="1Б">
+      <div class="tpl-name">8 мест</div><div class="tpl-meta">340×180 · 250 ₽/ч</div>
+    </div>
+    <h3>Переговорные</h3>
+    <div class="tpl" data-kind="room" data-cap="10" data-w="500" data-h="300" data-price="500" data-name="Переговорный стол 10 мест" data-loc="3А">
+      <div class="tpl-name">Стол переговорный · 10 мест</div><div class="tpl-meta">500×300 · 500 ₽/ч</div>
+    </div>
+  </aside>
+
+  <div class="canvas-wrap">
+    <svg id="canvas" width="2240" height="1344" viewBox="0 0 2240 1344">
+      <rect x="0" y="0" width="2240" height="1344" fill="#f1f5f9"/>
+      <g id="walls-layer"></g>
+      <g id="doors-layer"></g>
+      <g id="places-layer"></g>
+      <g id="overlay-layer"></g>
+    </svg>
+    <div class="zoombar">
+      <button onclick="zoom(0.2)">+</button>
+      <button onclick="zoomReset()" style="font-size:11px;">1:1</button>
+      <button onclick="zoom(-0.2)">−</button>
+    </div>
+  </div>
+
+  <aside class="props">
+    <div id="props-empty" class="empty">
+      <i class="fas fa-mouse-pointer" style="font-size:32px; color:#475569;"></i>
+      <p>Выберите место на карте<br>или перетащите шаблон</p>
+    </div>
+    <div id="props-form" style="display:none;">
+      <h3 id="prop-title">—</h3>
+      <div class="field"><label>Название</label><input id="prop-name" type="text"></div>
+      <div class="field"><label>Тип</label>
+        <select id="prop-kind">
+          <option value="desk">Стол (desk)</option>
+          <option value="room">Переговорная (room)</option>
+        </select>
+      </div>
+      <div class="row">
+        <div class="field"><label>Ширина</label><input id="prop-w" type="number" min="60"></div>
+        <div class="field"><label>Высота</label><input id="prop-h" type="number" min="40"></div>
+      </div>
+      <div class="row">
+        <div class="field"><label>X</label><input id="prop-x" type="number"></div>
+        <div class="field"><label>Y</label><input id="prop-y" type="number"></div>
+      </div>
+      <div class="field"><label>Поворот</label><input id="prop-rotation" type="number" min="0" max="359" step="15"></div>
+      <div class="row">
+        <div class="field"><label>Вместимость</label><input id="prop-cap" type="number" min="1"></div>
+        <div class="field"><label>Цена ₽/ч</label><input id="prop-price" type="number" min="0" step="0.01"></div>
+      </div>
+      <button class="btn-block" style="background:#0ea5e9; color:white;" onclick="saveProps()">
+        <i class="fas fa-save"></i> Сохранить
+      </button>
+      <button class="btn-block" style="background:#8b5cf6; color:white;" onclick="rotateSelected(90)">
+        <i class="fas fa-redo"></i> Повернуть на 90°
+      </button>
+      <button class="btn-block del" onclick="deletePlace()">
+        <i class="fas fa-trash"></i> Удалить
+      </button>
+      <div id="layout-helper" class="suggestions" style="display:none;">
+        <h3>Варианты оформления</h3>
+        <div id="helper-metrics" class="metric"></div>
+        <div id="helper-options"></div>
+      </div>
+    </div>
+    <div id="room-helper" style="display:none;">
+      <h3 id="room-helper-title">Комната</h3>
+      <div id="room-helper-metrics" class="metric"></div>
+      <div id="room-helper-options"></div>
+    </div>
+  </aside>
+</div>
+
+<script>
+const SVG_W = 2240, SVG_H = 1344;
+let places = [], walls = [], doors = [];
+let currentFloor = 1;
+let wallMode = false;
+let doorMode = false;
+let wallStart = null;
+let selectedId = null;
+let selectedRoom = null;
+let zoomLevel = 1;
+const DESK_TEMPLATES = [
+  { name:'Стол складной', width:100, height:75, capacity:1, price:250 },
+  { name:'Стол статичный', width:200, height:125, capacity:1, price:250 },
+  { name:'Стол на 2', width:220, height:125, capacity:2, price:250 },
+  { name:'Стол на 4', width:260, height:150, capacity:4, price:250 },
+  { name:'Стол на 6', width:300, height:160, capacity:6, price:250 },
+  { name:'Стол на 8', width:340, height:180, capacity:8, price:250 },
+  { name:'Переговорный стол 10 мест', width:500, height:300, capacity:10, price:500, kind:'room', location_code:'3А' },
+];
+const CHAIR_LONG = 36;
+const CHAIR_SHORT = 26;
+const CHAIR_BACK = 7;
+const CHAIR_MARGIN = 13;
+const CHAIR_FOOTPRINT_MARGIN = CHAIR_MARGIN + CHAIR_SHORT / 2;
+
+function toast(msg, type) {
+  const t = document.createElement('div');
+  t.className = 'toast ' + (type||'info');
+  t.textContent = msg;
+  document.body.appendChild(t);
+  setTimeout(()=>{ t.style.opacity='0'; t.style.transition='opacity .3s'; }, 2500);
+  setTimeout(()=>t.remove(), 2900);
+}
+function svgPoint(evt) {
+  const svg = document.getElementById('canvas');
+  const pt = svg.createSVGPoint();
+  pt.x = evt.clientX; pt.y = evt.clientY;
+  return pt.matrixTransform(svg.getScreenCTM().inverse());
+}
+async function api(path, opts) {
+  opts = opts || {};
+  opts.headers = Object.assign({'Content-Type':'application/json'}, opts.headers||{});
+  const r = await fetch(path, opts);
+  let data = {};
+  try { data = await r.json(); } catch(e) {}
+  if (!r.ok || data.success === false) {
+    const msg = data.error || ('HTTP '+r.status);
+    toast('Ошибка: ' + msg, 'error');
+    throw new Error(msg);
+  }
+  return data;
+}
+function zoom(d) { zoomLevel = Math.max(0.3, Math.min(3, zoomLevel + d)); applyZoom(); }
+function zoomReset() { zoomLevel = 1; applyZoom(); }
+function applyZoom() {
+  const svg = document.getElementById('canvas');
+  svg.style.width = (SVG_W * zoomLevel) + 'px';
+  svg.style.height = (SVG_H * zoomLevel) + 'px';
+}
+
+async function loadAll() {
+  try {
+    const r = await fetch('/api/places');
+    const data = await r.json();
+    if (Array.isArray(data)) { places = data; walls = []; doors = []; }
+    else { places = data.places||[]; walls = data.walls||[]; doors = data.doors||[]; }
+    render();
+    toast(floorPlaces().length+' мест · '+floorWalls().length+' стен · '+floorDoors().length+' дверей', 'success');
+  } catch(e) { toast('Не удалось загрузить', 'error'); }
+}
+
+function render() { renderWalls(); renderRoomSelection(); renderDoors(); renderPlaces(); }
+
+function floorPlaces() { return places.filter(p => Number(p.floor || 1) === currentFloor); }
+function floorWalls() { return walls.filter(w => Number(w.floor || 1) === currentFloor); }
+function floorDoors() { return doors.filter(d => Number(d.floor || 1) === currentFloor); }
+
+function setFloor(floor) {
+  currentFloor = floor;
+  selectedId = null;
+  selectedRoom = null;
+  wallStart = null;
+  [1,2,3].forEach(n => {
+    const btn = document.getElementById('floor-btn-' + n);
+    if (btn) btn.style.background = n === floor ? '#0ea5e9' : '';
+  });
+  render();
+}
+
+function renderRoomSelection() {
+  const layer = document.getElementById('overlay-layer');
+  layer.innerHTML = '';
+  if (!selectedRoom) return;
+  const rect = document.createElementNS('http://www.w3.org/2000/svg','rect');
+  rect.setAttribute('x', selectedRoom.x);
+  rect.setAttribute('y', selectedRoom.y);
+  rect.setAttribute('width', selectedRoom.width);
+  rect.setAttribute('height', selectedRoom.height);
+  rect.setAttribute('fill', 'rgba(14,165,233,0.18)');
+  rect.setAttribute('stroke', '#0ea5e9');
+  rect.setAttribute('stroke-width', 5);
+  rect.setAttribute('stroke-dasharray', '14,8');
+  rect.setAttribute('pointer-events', 'none');
+  layer.appendChild(rect);
+}
+
+function renderPlaces() {
+  const layer = document.getElementById('places-layer');
+  layer.innerHTML = '';
+  const FILL = { desk:'#d4a574', room:'#bae6fd', office:'#fde68a', openspace:'#ddd6fe' };
+  const STROKE = { desk:'#8b5e3c', room:'#0284c7', office:'#d97706', openspace:'#7c3aed' };
+  floorPlaces().forEach(p => {
+    const g = document.createElementNS('http://www.w3.org/2000/svg','g');
+    const rotation = Number(p.rotation || 0);
+    if (rotation) {
+      g.setAttribute('transform', 'rotate(' + rotation + ' ' + (p.x + p.width/2) + ' ' + (p.y + p.height/2) + ')');
+    }
+    const rect = document.createElementNS('http://www.w3.org/2000/svg','rect');
+    rect.setAttribute('x', p.x); rect.setAttribute('y', p.y);
+    rect.setAttribute('width', p.width); rect.setAttribute('height', p.height);
+    rect.setAttribute('rx', 6);
+    rect.setAttribute('fill', FILL[p.kind]||'#cbd5e1');
+    rect.setAttribute('stroke', STROKE[p.kind]||'#64748b');
+    rect.setAttribute('stroke-width', 3);
+    rect.classList.add('place-rect');
+    if (p.id === selectedId) rect.classList.add('selected');
+    rect.addEventListener('mousedown', e => startDrag(e, p));
+    g.appendChild(rect);
+
+    renderEditorChairs(g, p);
+
+    const label = document.createElementNS('http://www.w3.org/2000/svg','text');
+    label.setAttribute('x', p.x + p.width/2);
+    label.setAttribute('y', p.y + p.height/2 - 4);
+    label.setAttribute('text-anchor','middle');
+    label.setAttribute('font-size', 13);
+    label.setAttribute('font-weight', 700);
+    label.setAttribute('fill', '#1e293b');
+    label.setAttribute('pointer-events','none');
+    label.textContent = p.name + ' (' + p.code + ')';
+    g.appendChild(label);
+
+    const meta = document.createElementNS('http://www.w3.org/2000/svg','text');
+    meta.setAttribute('x', p.x + p.width/2);
+    meta.setAttribute('y', p.y + p.height/2 + 12);
+    meta.setAttribute('text-anchor','middle');
+    meta.setAttribute('font-size', 10);
+    meta.setAttribute('fill', '#475569');
+    meta.setAttribute('pointer-events','none');
+    meta.textContent = p.capacity + ' мест · ' + p.price_per_hour + ' ₽/ч';
+    g.appendChild(meta);
+
+    if (p.id === selectedId) {
+      const h = document.createElementNS('http://www.w3.org/2000/svg','rect');
+      h.setAttribute('x', p.x + p.width - 8);
+      h.setAttribute('y', p.y + p.height - 8);
+      h.setAttribute('width', 16); h.setAttribute('height', 16);
+      h.setAttribute('rx', 3);
+      h.classList.add('resize-handle');
+      h.addEventListener('mousedown', e => startResize(e, p));
+      g.appendChild(h);
+    }
+    layer.appendChild(g);
+  });
+}
+
+function editorChairLayout(place) {
+  const count = Math.max(0, Number(place.capacity || 0));
+  const x = Number(place.x), y = Number(place.y), w = Number(place.width), h = Number(place.height);
+  const result = [];
+  if (!count) return result;
+  const sides = count <= 2
+    ? [
+      {side:'bottom', slots:Math.max(1, Math.floor(w / 70))},
+      {side:'top', slots:Math.max(1, Math.floor(w / 70))},
+      {side:'right', slots:Math.max(1, Math.floor(h / 70))},
+      {side:'left', slots:Math.max(1, Math.floor(h / 70))}
+    ]
+    : [
+      {side:'top', slots:Math.max(1, Math.floor(w / 70))},
+      {side:'bottom', slots:Math.max(1, Math.floor(w / 70))},
+      {side:'right', slots:Math.max(1, Math.floor(h / 70))},
+      {side:'left', slots:Math.max(1, Math.floor(h / 70))}
+    ];
+  let left = count;
+  for (const s of sides) {
+    const take = Math.min(left, s.slots);
+    for (let i = 0; i < take; i++) {
+      const ratio = (i + 1) / (take + 1);
+      if (s.side === 'top') result.push({cx:x + w * ratio, cy:y - CHAIR_MARGIN, side:s.side});
+      if (s.side === 'right') result.push({cx:x + w + CHAIR_MARGIN, cy:y + h * ratio, side:s.side});
+      if (s.side === 'bottom') result.push({cx:x + w * ratio, cy:y + h + CHAIR_MARGIN, side:s.side});
+      if (s.side === 'left') result.push({cx:x - CHAIR_MARGIN, cy:y + h * ratio, side:s.side});
+    }
+    left -= take;
+    if (left <= 0) break;
+  }
+  while (left > 0) {
+    const ratio = ((count - left) % 4 + 1) / 5;
+    result.push({cx:x + w * ratio, cy:y + h + CHAIR_MARGIN, side:'bottom'});
+    left--;
+  }
+  return result;
+}
+
+function renderEditorChairs(group, place) {
+  editorChairLayout(place).forEach(chair => {
+    const horizontal = chair.side === 'top' || chair.side === 'bottom';
+    const cw = horizontal ? CHAIR_LONG : CHAIR_SHORT;
+    const ch = horizontal ? CHAIR_SHORT : CHAIR_LONG;
+    const x = chair.cx - cw / 2;
+    const y = chair.cy - ch / 2;
+    const seat = document.createElementNS('http://www.w3.org/2000/svg','rect');
+    seat.setAttribute('x', x);
+    seat.setAttribute('y', y);
+    seat.setAttribute('width', cw);
+    seat.setAttribute('height', ch);
+    seat.setAttribute('rx', horizontal ? cw / 2 : ch / 2);
+    seat.setAttribute('ry', horizontal ? cw / 2 : ch / 2);
+    seat.setAttribute('fill', '#334155');
+    seat.setAttribute('stroke', '#1e293b');
+    seat.setAttribute('stroke-width', 1.5);
+    seat.setAttribute('pointer-events', 'none');
+    group.appendChild(seat);
+    const back = document.createElementNS('http://www.w3.org/2000/svg','rect');
+    if (chair.side === 'top') {
+      back.setAttribute('x', x + 4);
+      back.setAttribute('y', y + ch - CHAIR_BACK);
+      back.setAttribute('width', cw - 8);
+      back.setAttribute('height', CHAIR_BACK);
+    } else if (chair.side === 'bottom') {
+      back.setAttribute('x', x + 4);
+      back.setAttribute('y', y);
+      back.setAttribute('width', cw - 8);
+      back.setAttribute('height', CHAIR_BACK);
+    } else if (chair.side === 'left') {
+      back.setAttribute('x', x + cw - CHAIR_BACK);
+      back.setAttribute('y', y + 4);
+      back.setAttribute('width', CHAIR_BACK);
+      back.setAttribute('height', ch - 8);
+    } else {
+      back.setAttribute('x', x);
+      back.setAttribute('y', y + 4);
+      back.setAttribute('width', CHAIR_BACK);
+      back.setAttribute('height', ch - 8);
+    }
+    back.setAttribute('rx', 3);
+    back.setAttribute('ry', 3);
+    back.setAttribute('fill', '#0f172a');
+    back.setAttribute('pointer-events', 'none');
+    group.appendChild(back);
+  });
+}
+
+function renderWalls() {
+  const layer = document.getElementById('walls-layer');
+  layer.innerHTML = '';
+  floorWalls().forEach(w => {
+    const ln = document.createElementNS('http://www.w3.org/2000/svg','line');
+    ln.setAttribute('x1', w.x1); ln.setAttribute('y1', w.y1);
+    ln.setAttribute('x2', w.x2); ln.setAttribute('y2', w.y2);
+    ln.classList.add('wall-line');
+    if (w.protected) ln.classList.add('protected');
+    ln.addEventListener('click', e => {
+      e.stopPropagation();
+      if (doorMode) addDoorAtWall(w, svgPoint(e));
+      else if (!w.protected && confirm('Удалить стену?')) deleteWall(w.id);
+    });
+    layer.appendChild(ln);
+  });
+}
+
+function renderDoors() {
+  const layer = document.getElementById('doors-layer');
+  layer.innerHTML = '';
+  floorDoors().forEach(d => {
+    const w = floorWalls().find(x => x.id === d.wall_id);
+    if (!w) return;
+    const dx = w.x2-w.x1, dy = w.y2-w.y1;
+    const len = Math.hypot(dx,dy);
+    if (len < 1) return;
+    const ux = dx/len, uy = dy/len;
+    const mx = w.x1 + dx*d.position, my = w.y1 + dy*d.position;
+    const hw = (d.width||50)/2;
+    const sx = mx - ux*hw, sy = my - uy*hw, ex = mx + ux*hw, ey = my + uy*hw;
+    const gap = document.createElementNS('http://www.w3.org/2000/svg','line');
+    gap.setAttribute('x1', sx); gap.setAttribute('y1', sy);
+    gap.setAttribute('x2', ex); gap.setAttribute('y2', ey);
+    gap.classList.add('door-gap');
+    layer.appendChild(gap);
+    const px = -uy, py = ux;
+    const aex = sx + px*hw*2, aey = sy + py*hw*2;
+    const arc = document.createElementNS('http://www.w3.org/2000/svg','path');
+    arc.setAttribute('d', 'M '+sx+' '+sy+' A '+hw*2+' '+hw*2+' 0 0 1 '+aex+' '+aey);
+    arc.classList.add('door-arc');
+    arc.addEventListener('mousedown', e => startDoorDrag(e, d));
+    arc.addEventListener('click', e => { e.stopPropagation(); if (!doorMode && confirm('Удалить дверь?')) deleteDoor(d.id); });
+    layer.appendChild(arc);
+  });
+}
+
+function selectPlace(id) {
+  selectedId = id;
+  selectedRoom = null;
+  document.getElementById('room-helper').style.display = 'none';
+  const p = places.find(x => x.id === id);
+  if (!p) {
+    document.getElementById('props-empty').style.display = 'block';
+    document.getElementById('props-form').style.display = 'none';
+    render(); return;
+  }
+  document.getElementById('props-empty').style.display = 'none';
+  document.getElementById('props-form').style.display = 'block';
+  document.getElementById('prop-title').textContent = p.name + ' (' + p.code + ')';
+  document.getElementById('prop-name').value = p.name;
+  document.getElementById('prop-kind').value = p.kind;
+  document.getElementById('prop-w').value = Math.round(p.width);
+  document.getElementById('prop-h').value = Math.round(p.height);
+  document.getElementById('prop-x').value = Math.round(p.x);
+  document.getElementById('prop-y').value = Math.round(p.y);
+  document.getElementById('prop-rotation').value = Math.round(p.rotation || 0);
+  document.getElementById('prop-cap').value = p.capacity;
+  document.getElementById('prop-price').value = p.price_per_hour;
+  renderLayoutHelper(p);
+  render();
+}
+
+function renderLayoutHelper(p) {
+  const helper = document.getElementById('layout-helper');
+  const metrics = document.getElementById('helper-metrics');
+  const options = document.getElementById('helper-options');
+  if (!helper || !metrics || !options) return;
+  if (p.kind !== 'openspace') {
+    helper.style.display = 'none';
+    return;
+  }
+  helper.style.display = 'block';
+  const area = Math.round(p.width * p.height);
+  metrics.innerHTML = 'Размер: <b>' + Math.round(p.width) + '×' + Math.round(p.height) + ' px</b><br>Площадь: <b>' + area.toLocaleString('ru-RU') + ' px²</b>';
+  const variants = buildLayoutVariants(p);
+  options.innerHTML = '';
+  if (!variants.length) {
+    options.innerHTML = '<div class="metric">Помещение слишком маленькое для стандартных столов с проходами.</div>';
+    return;
+  }
+  variants.forEach((v, idx) => {
+    const card = document.createElement('div');
+    card.className = 'suggestion-card';
+    card.innerHTML = '<strong>' + v.title + '</strong><span>' + v.description + '</span>';
+    const btn = document.createElement('button');
+    btn.textContent = 'Поставить этот вариант';
+    btn.addEventListener('click', () => applyLayoutVariant(idx));
+    card.appendChild(btn);
+    options.appendChild(card);
+  });
+}
+
+function buildLayoutVariants(room) {
+  const variants = [];
+  const margin = 40;
+  const gap = 30;
+  const usableW = Math.max(0, room.width - margin * 2);
+  const usableH = Math.max(0, room.height - margin * 2);
+  DESK_TEMPLATES.forEach(tpl => {
+    const cols = Math.floor((usableW + gap) / (tpl.width + gap));
+    const rows = Math.floor((usableH + gap) / (tpl.height + gap));
+    const count = cols * rows;
+    if (count < 1) return;
+    variants.push({
+      title: tpl.name + ' · ' + count + ' шт.',
+      description: cols + '×' + rows + ' рядов · ' + (count * tpl.capacity) + ' рабочих мест · проходы ~' + gap + ' px',
+      template: tpl,
+      cols: cols,
+      rows: rows,
+      count: count,
+      margin: margin,
+      gap: gap,
+    });
+  });
+  return variants.sort((a,b) => (b.count * b.template.capacity) - (a.count * a.template.capacity)).slice(0, 4);
+}
+
+function selectRoomByPoint(pt) {
+  const room = findWallRoomAtPoint(pt.x, pt.y);
+  if (!room) {
+    selectedRoom = null;
+    document.getElementById('room-helper').style.display = 'none';
+    render();
+    return;
+  }
+  selectedId = null;
+  selectedRoom = room;
+  document.getElementById('props-empty').style.display = 'none';
+  document.getElementById('props-form').style.display = 'none';
+  renderRoomHelper(room);
+  render();
+}
+
+function findWallRoomAtPoint(x, y) {
+  const verticals = floorWalls().filter(w => Math.abs(w.x1 - w.x2) < 3).map(w => ({
+    x: Math.round((w.x1 + w.x2) / 2),
+    y1: Math.min(w.y1, w.y2),
+    y2: Math.max(w.y1, w.y2),
+  }));
+  const horizontals = floorWalls().filter(w => Math.abs(w.y1 - w.y2) < 3).map(w => ({
+    y: Math.round((w.y1 + w.y2) / 2),
+    x1: Math.min(w.x1, w.x2),
+    x2: Math.max(w.x1, w.x2),
+  }));
+  const lefts = verticals.filter(w => w.x < x && w.y1 <= y && w.y2 >= y).sort((a,b) => b.x - a.x);
+  const rights = verticals.filter(w => w.x > x && w.y1 <= y && w.y2 >= y).sort((a,b) => a.x - b.x);
+  const tops = horizontals.filter(w => w.y < y && w.x1 <= x && w.x2 >= x).sort((a,b) => b.y - a.y);
+  const bottoms = horizontals.filter(w => w.y > y && w.x1 <= x && w.x2 >= x).sort((a,b) => a.y - b.y);
+  if (!lefts.length || !rights.length || !tops.length || !bottoms.length) return null;
+  const left = lefts[0], right = rights[0], top = tops[0], bottom = bottoms[0];
+  if (right.x - left.x < 80 || bottom.y - top.y < 80) return null;
+  const hasTop = top.x1 <= left.x + 8 && top.x2 >= right.x - 8;
+  const hasBottom = bottom.x1 <= left.x + 8 && bottom.x2 >= right.x - 8;
+  const hasLeft = left.y1 <= top.y + 8 && left.y2 >= bottom.y - 8;
+  const hasRight = right.y1 <= top.y + 8 && right.y2 >= bottom.y - 8;
+  if (!hasTop || !hasBottom || !hasLeft || !hasRight) return null;
+  return {
+    x: left.x,
+    y: top.y,
+    width: right.x - left.x,
+    height: bottom.y - top.y,
+  };
+}
+
+function roomHasObjects(room) {
+  return floorPlaces().some(p => {
+    const cx = p.x + p.width / 2;
+    const cy = p.y + p.height / 2;
+    return cx > room.x && cx < room.x + room.width && cy > room.y && cy < room.y + room.height;
+  });
+}
+
+function renderRoomHelper(room) {
+  const helper = document.getElementById('room-helper');
+  const title = document.getElementById('room-helper-title');
+  const metrics = document.getElementById('room-helper-metrics');
+  const options = document.getElementById('room-helper-options');
+  helper.style.display = 'block';
+  title.textContent = 'Выбранная комната';
+  const empty = !roomHasObjects(room);
+  const area = Math.round(room.width * room.height);
+  metrics.innerHTML = 'Размер: <b>' + room.width + '×' + room.height + ' px</b><br>Площадь: <b>' + area.toLocaleString('ru-RU') + ' px²</b><br>Статус: <b>' + (empty ? 'пусто' : 'уже есть объекты') + '</b>';
+  options.innerHTML = '';
+  if (!empty) {
+    options.innerHTML = '<div class="metric">Варианты доступны только если внутри комнаты ничего нет.</div>';
+    return;
+  }
+  const variants = buildRoomSetVariants(room);
+  if (!variants.length) {
+    options.innerHTML = '<div class="metric">Для этой комнаты нет подходящих вариантов.</div>';
+    return;
+  }
+  variants.forEach((v, idx) => {
+    const card = document.createElement('div');
+    card.className = 'suggestion-card';
+    card.innerHTML = '<strong>Вариант ' + (idx + 1) + (v.title ? ': ' + v.title : '') + '</strong><span>' + v.items.map(i => i.template.name + (i.count > 1 ? ' ×' + i.count : '')).join('<br>') + '</span>';
+    const btn = document.createElement('button');
+    btn.textContent = 'Выбрать вариант';
+    btn.addEventListener('click', () => applyRoomSetVariant(idx));
+    card.appendChild(btn);
+    options.appendChild(card);
+  });
+}
+function normalizePositionedKey(positioned) {
+    // Создаём копию и сортируем по x, y, имени шаблона
+    const sorted = [...positioned].sort((a, b) => {
+        if (a.x !== b.x) return a.x - b.x;
+        if (a.y !== b.y) return a.y - b.y;
+        return a.template.name.localeCompare(b.template.name);
+    });
+    // Формируем строку: имя_шаблона:x:y:width:height
+    return sorted.map(p => `${p.template.name}:${p.x}:${p.y}:${p.template.width}:${p.template.height}`).join('|');
+}
+
+function buildRoomSetVariants(room) {
+    const starters = DESK_TEMPLATES.slice().sort((a,b) => (b.capacity * b.width * b.height) - (a.capacity * a.width * a.height));
+    const fillers = DESK_TEMPLATES.filter(t => !t.kind).slice().sort((a,b) => (b.capacity / (b.width * b.height)) - (a.capacity / (a.width * a.height)));
+    const variants = [];
+    const seenKeys = new Set(); // Храним нормализованные ключи
+
+    const anchors = ['tl', 'tr', 'bl', 'br', 'center'];
+    starters.forEach(starter => {
+        anchors.forEach(anchor => {
+            const positioned = packComplexVariant(room, starter, fillers, anchor);
+            if (!positioned || positioned.length < 2) return;
+            const key = normalizePositionedKey(positioned);
+            if (seenKeys.has(key)) return; // дубликат отбрасываем
+            seenKeys.add(key);
+            variants.push({
+                key,
+                title: starter.name + ' + добор свободных зон',
+                items: summarizePositioned(positioned),
+                positioned
+            });
+        });
+    });
+
+    // Дополнительно: простые сеточные варианты (layoutSetForRoom) тоже могут дублироваться
+    // Добавим их с отдельной нормализацией
+    const simpleVariants = [];
+    const simpleSeen = new Set();
+    // Простые варианты — можно перебрать все шаблоны и попробовать упаковать только один тип
+    DESK_TEMPLATES.forEach(tpl => {
+        if (tpl.kind === 'room') return;
+        const maxCount = maxTemplateCountForRoom(room, tpl);
+        if (maxCount < 1) return;
+        const count = Math.min(maxCount, 20);
+        const items = [{ template: tpl, count: count }];
+        const positioned = layoutSetForRoom(room, items);
+        if (!positioned) return;
+        const key = normalizePositionedKey(positioned);
+        if (simpleSeen.has(key)) return;
+        simpleSeen.add(key);
+        simpleVariants.push({
+            key,
+            title: `${tpl.name} × ${count}`,
+            items: [{ template: tpl, count }],
+            positioned
+        });
+    });
+    const allVariants = [...variants, ...simpleVariants];
+    allVariants.sort((a,b) => positionedCapacity(b.positioned) - positionedCapacity(a.positioned));
+    return allVariants.slice(0, 12); // показываем не более 12 вариантов
+}
+
+function variantCapacity(items) {
+  return items.reduce((sum, item) => sum + item.template.capacity * item.count, 0);
+}
+
+function maxTemplateCountForRoom(room, tpl) {
+  const margin = 0;
+  const gap = 150;
+  const usableW = room.width - margin * 2;
+  const usableH = room.height - margin * 2;
+  if (usableW < tpl.width || usableH < tpl.height) return 0;
+  const cols = Math.floor((usableW + gap) / (tpl.width + gap));
+  const rows = Math.floor((usableH + gap) / (tpl.height + gap));
+  return Math.max(0, cols * rows);
+}
+
+function layoutSetForRoom(room, items) {
+  const margin = 0;
+  const gap = 150;
+  const expanded = [];
+  items.forEach(i => {
+    for (let n = 0; n < i.count; n++) expanded.push(i.template);
+  });
+  const rows = [];
+  let row = [];
+  let rowW = 0;
+  let rowH = 0;
+  const maxW = room.width - margin * 2;
+  const maxH = room.height - margin * 2;
+  const sorted = expanded.slice().sort((a,b) => (b.width * b.height) - (a.width * a.height));
+  for (const tpl of sorted) {
+    const nextW = row.length ? rowW + gap + tpl.width : tpl.width;
+    if (row.length && nextW > maxW) {
+      rows.push({items:row, width:rowW, height:rowH});
+      row = [];
+      rowW = 0;
+      rowH = 0;
+    }
+    if (tpl.width > maxW || tpl.height > maxH) return null;
+    row.push(tpl);
+    rowW = rowW ? rowW + gap + tpl.width : tpl.width;
+    rowH = Math.max(rowH, tpl.height);
+  }
+  if (row.length) rows.push({items:row, width:rowW, height:rowH});
+  const totalH = rows.reduce((sum, r) => sum + r.height, 0) + gap * Math.max(0, rows.length - 1);
+  if (totalH > maxH) return null;
+  let y = room.y + margin + Math.max(0, (maxH - totalH) / 2);
+  const positioned = [];
+  for (const r of rows) {
+    let x = room.x + margin + Math.max(0, (maxW - r.width) / 2);
+    for (const tpl of r.items) {
+      positioned.push({ template: tpl, x: Math.round(x), y: Math.round(y) });
+      x += tpl.width + gap;
+    }
+    y += r.height + gap;
+  }
+  return hasMinSpacing(positioned, 150) ? positioned : null;
+}
+
+function hasMinSpacing(positioned, minGap) {
+  for (let i = 0; i < positioned.length; i++) {
+    for (let j = i + 1; j < positioned.length; j++) {
+      const a = objectBounds(positioned[i]), b = objectBounds(positioned[j]);
+      const overlapY = a.y2 > b.y1 && b.y2 > a.y1;
+      const overlapX = a.x2 > b.x1 && b.x2 > a.x1;
+      const gapX = Math.max(b.x1 - a.x2, a.x1 - b.x2, 0);
+      const gapY = Math.max(b.y1 - a.y2, a.y1 - b.y2, 0);
+      if ((overlapY && gapX < minGap) || (overlapX && gapY < minGap) || (overlapX && overlapY)) return false;
+    }
+  }
+  return true;
+}
+
+function packComplexVariant(room, starter, fillers, anchor) {
+  const gap = 150;
+  const positioned = [];
+  const start = starterPosition(room, starter, anchor);
+  if (!fitsInRoom(room, starter, start.x, start.y)) return null;
+  positioned.push({template: starter, x: Math.round(start.x), y: Math.round(start.y)});
+  let added = true;
+  while (added && positioned.length < 16) {
+    added = false;
+    const candidates = buildPackingCandidates(room, positioned, fillers, gap);
+    candidates.sort((a,b) => b.template.capacity - a.template.capacity || a.score - b.score);
+    for (const c of candidates) {
+      if (!fitsInRoom(room, c.template, c.x, c.y)) continue;
+      const next = positioned.concat([{template:c.template, x:c.x, y:c.y}]);
+      if (!hasMinSpacing(next, gap)) continue;
+      positioned.push({template:c.template, x:c.x, y:c.y});
+      added = true;
+      break;
+    }
+  }
+  return positioned;
+}
+
+function starterPosition(room, tpl, anchor) {
+  const m = templateMargins(tpl);
+  if (anchor === 'tr') return {x: room.x + room.width - tpl.width - m.right, y: room.y + m.top};
+  if (anchor === 'bl') return {x: room.x + m.left, y: room.y + room.height - tpl.height - m.bottom};
+  if (anchor === 'br') return {x: room.x + room.width - tpl.width - m.right, y: room.y + room.height - tpl.height - m.bottom};
+  if (anchor === 'center') return {x: room.x + (room.width - tpl.width) / 2, y: room.y + (room.height - tpl.height) / 2};
+  return {x: room.x + m.left, y: room.y + m.top};
+}
+
+function buildPackingCandidates(room, positioned, fillers, gap) {
+  const xs = [room.x, room.x + room.width];
+  const ys = [room.y, room.y + room.height];
+  positioned.forEach(p => {
+    const b = objectBounds(p);
+    xs.push(b.x1 - gap + CHAIR_FOOTPRINT_MARGIN, b.x2 + gap + CHAIR_FOOTPRINT_MARGIN);
+    ys.push(b.y1 - gap + CHAIR_FOOTPRINT_MARGIN, b.y2 + gap + CHAIR_FOOTPRINT_MARGIN);
+  });
+  const candidates = [];
+  fillers.forEach(tpl => {
+    const m = templateMargins(tpl);
+    xs.forEach(x => {
+      ys.forEach(y => {
+        const px = Math.round(Math.min(x, x === room.x + room.width ? x - tpl.width - m.right : x));
+        const py = Math.round(Math.min(y, y === room.y + room.height ? y - tpl.height - m.bottom : y));
+        candidates.push({
+          template: tpl,
+          x: px,
+          y: py,
+          score: Math.hypot(px - room.x, py - room.y)
+        });
+      });
+    });
+  });
+  return candidates;
+}
+
+function fitsInRoom(room, tpl, x, y) {
+  const b = objectBounds({template:tpl, x, y});
+  return b.x1 >= room.x && b.y1 >= room.y && b.x2 <= room.x + room.width && b.y2 <= room.y + room.height;
+}
+
+function templateMargins(tpl) {
+  const sides = new Set(editorChairLayout({
+    x: 0,
+    y: 0,
+    width: tpl.width,
+    height: tpl.height,
+    capacity: tpl.capacity
+  }).map(ch => ch.side));
+  return {
+    top: sides.has('top') ? CHAIR_FOOTPRINT_MARGIN : 0,
+    right: sides.has('right') ? CHAIR_FOOTPRINT_MARGIN : 0,
+    bottom: sides.has('bottom') ? CHAIR_FOOTPRINT_MARGIN : 0,
+    left: sides.has('left') ? CHAIR_FOOTPRINT_MARGIN : 0
+  };
+}
+
+function objectBounds(item) {
+  const m = templateMargins(item.template);
+  return {
+    x1: item.x - m.left,
+    y1: item.y - m.top,
+    x2: item.x + item.template.width + m.right,
+    y2: item.y + item.template.height + m.bottom
+  };
+}
+
+function summarizePositioned(positioned) {
+  const map = new Map();
+  positioned.forEach(p => map.set(p.template.name, {template:p.template, count:(map.get(p.template.name)?.count || 0) + 1}));
+  return Array.from(map.values());
+}
+
+function positionedCapacity(positioned) {
+  return positioned.reduce((sum, p) => sum + p.template.capacity, 0);
+}
+
+async function applyRoomSetVariant(idx) {
+  if (!selectedRoom || roomHasObjects(selectedRoom)) {
+    toast('В комнате уже есть объекты', 'error');
+    renderRoomHelper(selectedRoom);
+    return;
+  }
+  const variant = buildRoomSetVariants(selectedRoom)[idx];
+  if (!variant) return;
+  const positioned = variant.positioned || layoutSetForRoom(selectedRoom, variant.items);
+  if (!positioned) return;
+  if (!confirm('Добавить выбранный вариант в комнату?')) return;
+  let created = 0;
+  try {
+    for (const item of positioned) {
+      await createPlace({
+        name: item.template.name,
+        location_code: item.template.location_code || '1Б',
+        kind: item.template.kind || 'desk',
+        x: item.x,
+        y: item.y,
+        width: item.template.width,
+        height: item.template.height,
+        floor: currentFloor,
+        price_per_hour: item.template.price,
+        capacity: item.template.capacity,
+      }, false);
+      created++;
+    }
+    toast('Добавлено столов: ' + created, 'success');
+    await loadAll();
+    renderRoomHelper(selectedRoom);
+  } catch(e) {
+    toast('Не удалось применить вариант', 'error');
+  }
+}
+
+async function applyLayoutVariant(idx) {
+  if (!selectedId) return;
+  const room = places.find(x => x.id === selectedId);
+  if (!room) return;
+  const variants = buildLayoutVariants(room);
+  const variant = variants[idx];
+  if (!variant) return;
+  if (!confirm('Добавить ' + variant.count + ' столов в "' + room.name + '"?')) return;
+  const tpl = variant.template;
+  const totalW = variant.cols * tpl.width + (variant.cols - 1) * variant.gap;
+  const totalH = variant.rows * tpl.height + (variant.rows - 1) * variant.gap;
+  const startX = Math.round(room.x + (room.width - totalW) / 2);
+  const startY = Math.round(room.y + (room.height - totalH) / 2);
+  let created = 0;
+  try {
+    for (let row = 0; row < variant.rows; row++) {
+      for (let col = 0; col < variant.cols; col++) {
+        await createPlace({
+          name: tpl.name,
+          location_code: '1Б',
+          kind: 'desk',
+          x: startX + col * (tpl.width + variant.gap),
+          y: startY + row * (tpl.height + variant.gap),
+          width: tpl.width,
+          height: tpl.height,
+          price_per_hour: tpl.price,
+          capacity: tpl.capacity,
+        }, false);
+        created++;
+      }
+    }
+    toast('Добавлено столов: ' + created, 'success');
+    await loadAll();
+    selectPlace(room.id);
+  } catch(e) {
+    toast('Не удалось применить вариант', 'error');
+  }
+}
+
+async function saveProps() {
+  if (!selectedId) return;
+  const p = places.find(x => x.id === selectedId);
+  if (!p) return;
+  const w = parseInt(document.getElementById('prop-w').value);
+  const h = parseInt(document.getElementById('prop-h').value);
+  const x = parseInt(document.getElementById('prop-x').value);
+  const y = parseInt(document.getElementById('prop-y').value);
+  const rotation = parseInt(document.getElementById('prop-rotation').value || '0');
+  try {
+    await api('/api/admin/place/move',   {method:'POST', body: JSON.stringify({code:p.code, x, y})});
+    await api('/api/admin/place/resize', {method:'POST', body: JSON.stringify({code:p.code, width:w, height:h})});
+    await api('/api/admin/place/rotate', {method:'POST', body: JSON.stringify({code:p.code, rotation})});
+    toast('Сохранено', 'success');
+    await loadAll();
+    selectPlace(selectedId);
+  } catch(e){}
+}
+
+async function deletePlace() {
+  if (!selectedId) return;
+  const p = places.find(x => x.id === selectedId);
+  if (!p) return;
+  if (!confirm('Удалить "' + p.name + '"?')) return;
+  try {
+    await api('/api/admin/place/' + p.id, {method:'DELETE'});
+    selectedId = null;
+    document.getElementById('props-empty').style.display='block';
+    document.getElementById('props-form').style.display='none';
+    await loadAll();
+  } catch(e){}
+}
+
+async function rotateSelected(delta) {
+  if (!selectedId) return;
+  const p = places.find(x => x.id === selectedId);
+  if (!p) return;
+  const rotation = (Number(p.rotation || 0) + delta + 360) % 360;
+  try {
+    await api('/api/admin/place/rotate', {method:'POST', body: JSON.stringify({code:p.code, rotation})});
+    p.rotation = rotation;
+    document.getElementById('prop-rotation').value = rotation;
+    render();
+    toast('Поворот: ' + rotation + '°', 'success');
+  } catch(e){}
+}
+
+function startDrag(evt, p) {
+  evt.preventDefault();
+  selectPlace(p.id);
+  const start = svgPoint(evt);
+  const origX = p.x, origY = p.y;
+  let moved = false;
+  function mv(e) {
+    const cur = svgPoint(e);
+    p.x = Math.round(origX + (cur.x - start.x));
+    p.y = Math.round(origY + (cur.y - start.y));
+    moved = true; renderPlaces();
+  }
+  function up() {
+    document.removeEventListener('mousemove', mv);
+    document.removeEventListener('mouseup', up);
+    if (moved) {
+      api('/api/admin/place/move', {method:'POST', body: JSON.stringify({code:p.code, x:p.x, y:p.y})}).catch(()=>{});
+    }
+  }
+  document.addEventListener('mousemove', mv);
+  document.addEventListener('mouseup', up);
+}
+
+function startResize(evt, p) {
+  evt.preventDefault(); evt.stopPropagation();
+  const start = svgPoint(evt);
+  const origW = p.width, origH = p.height;
+  function mv(e) {
+    const cur = svgPoint(e);
+    p.width  = Math.max(60, Math.round(origW + (cur.x - start.x)));
+    p.height = Math.max(40, Math.round(origH + (cur.y - start.y)));
+    renderPlaces();
+  }
+  function up() {
+    document.removeEventListener('mousemove', mv);
+    document.removeEventListener('mouseup', up);
+    api('/api/admin/place/resize', {method:'POST', body: JSON.stringify({code:p.code, width:p.width, height:p.height})}).catch(()=>{});
+  }
+  document.addEventListener('mousemove', mv);
+  document.addEventListener('mouseup', up);
+}
+
+function initTplDrag() {
+  document.querySelectorAll('.tpl').forEach(card => {
+    card.addEventListener('mousedown', e => {
+      e.preventDefault();
+      const data = card.dataset;
+      const ghost = card.cloneNode(true);
+      ghost.style.position='fixed'; ghost.style.left=e.clientX+'px'; ghost.style.top=e.clientY+'px';
+      ghost.style.pointerEvents='none'; ghost.style.opacity='0.7'; ghost.style.zIndex=9999;
+      document.body.appendChild(ghost);
+      function mv(ev){ ghost.style.left=ev.clientX+'px'; ghost.style.top=ev.clientY+'px'; }
+      function up(ev){
+        document.removeEventListener('mousemove', mv);
+        document.removeEventListener('mouseup', up);
+        ghost.remove();
+        const svg = document.getElementById('canvas');
+        const r = svg.getBoundingClientRect();
+        if (ev.clientX<r.left || ev.clientX>r.right || ev.clientY<r.top || ev.clientY>r.bottom) return;
+        const pt = svgPoint(ev);
+        const w = parseInt(data.w), h = parseInt(data.h);
+        createPlace({
+          name: data.name,
+          location_code: data.loc,
+          kind: data.kind,
+          x: Math.max(0, Math.round(pt.x - w/2)),
+          y: Math.max(0, Math.round(pt.y - h/2)),
+          width: w, height: h,
+          floor: currentFloor,
+          price_per_hour: parseFloat(data.price),
+          capacity: parseInt(data.cap),
+        });
+      }
+      document.addEventListener('mousemove', mv);
+      document.addEventListener('mouseup', up);
+    });
+  });
+}
+
+async function createPlace(payload, reload) {
+  try {
+    const data = await api('/api/admin/place/create', {method:'POST', body: JSON.stringify(payload)});
+    if (reload !== false) {
+      toast('Создано: '+(data.place ? data.place.code : payload.name), 'success');
+      await loadAll();
+    }
+  } catch(e){}
+}
+
+function setModeLabel(text) {
+  const label = document.getElementById('mode-label');
+  label.style.display = (wallMode || doorMode) ? 'inline-flex' : 'none';
+  label.textContent = text || '';
+}
+
+function toggleWallMode() {
+  wallMode = !wallMode;
+  if (wallMode) doorMode = false;
+  wallStart = null;
+  setModeLabel(wallMode ? 'Режим стен: кликните 2 точки' : '');
+}
+
+function toggleDoorMode() {
+  doorMode = !doorMode;
+  if (doorMode) wallMode = false;
+  wallStart = null;
+  setModeLabel(doorMode ? 'Режим дверей: кликните стену' : '');
+}
+
+async function createWall(a, b) {
+  const dx = Math.abs(b.x - a.x);
+  const dy = Math.abs(b.y - a.y);
+  if (dx < 20 && dy < 20) return;
+  const payload = {
+    x1: Math.round(a.x),
+    y1: Math.round(a.y),
+    x2: Math.round(dx >= dy ? b.x : a.x),
+    y2: Math.round(dx >= dy ? a.y : b.y),
+    floor: currentFloor
+  };
+  await api('/api/admin/wall/create', {method:'POST', body:JSON.stringify(payload)});
+  await loadAll();
+}
+
+async function deleteWall(id) {
+  await api('/api/admin/wall/' + id, {method:'DELETE'});
+  await loadAll();
+}
+
+async function addDoorAtWall(w, pt) {
+  const dx = w.x2 - w.x1, dy = w.y2 - w.y1;
+  const len2 = dx * dx + dy * dy;
+  if (len2 < 1) return;
+  const position = Math.max(0.05, Math.min(0.95, ((pt.x - w.x1) * dx + (pt.y - w.y1) * dy) / len2));
+  await api('/api/admin/door/create', {method:'POST', body:JSON.stringify({wall_id:w.id, position, floor:currentFloor})});
+  await loadAll();
+}
+
+async function deleteDoor(id) {
+  await api('/api/admin/door/' + id, {method:'DELETE'});
+  await loadAll();
+}
+
+function nearestWall(pt) {
+  let best = null;
+  let bestDist = Infinity;
+  floorWalls().forEach(w => {
+    const dx = w.x2 - w.x1, dy = w.y2 - w.y1;
+    const len2 = dx * dx + dy * dy;
+    if (len2 < 1) return;
+    const t = Math.max(0, Math.min(1, ((pt.x - w.x1) * dx + (pt.y - w.y1) * dy) / len2));
+    const x = w.x1 + dx * t, y = w.y1 + dy * t;
+    const dist = Math.hypot(pt.x - x, pt.y - y);
+    if (dist < bestDist) best = {wall:w, position:t}, bestDist = dist;
+  });
+  return bestDist <= 80 ? best : null;
+}
+
+function startDoorDrag(evt, door) {
+  evt.preventDefault();
+  evt.stopPropagation();
+  function move(e) {
+    const near = nearestWall(svgPoint(e));
+    if (!near) return;
+    door.wall_id = near.wall.id;
+    door.position = near.position;
+    renderDoors();
+  }
+  async function up(e) {
+    document.removeEventListener('mousemove', move);
+    document.removeEventListener('mouseup', up);
+    const near = nearestWall(svgPoint(e));
+    if (!near) return;
+    await api('/api/admin/door/move', {method:'POST', body:JSON.stringify({door_id:door.id, wall_id:near.wall.id, position:near.position})});
+    await loadAll();
+  }
+  document.addEventListener('mousemove', move);
+  document.addEventListener('mouseup', up);
+}
+
+function canvasMouseDown(evt) {
+  const pt = svgPoint(evt);
+  if (wallMode) {
+    if (!wallStart) {
+      wallStart = pt;
+      toast('Начало стены выбрано', 'info');
+    } else {
+      createWall(wallStart, pt);
+      wallStart = null;
+    }
+    return;
+  }
+  if (evt.target.tagName==='rect' && evt.target.parentNode.id==='canvas') {
+    selectRoomByPoint(pt);
+  }
+}
+
+document.addEventListener('DOMContentLoaded', () => {
+  initTplDrag();
+  document.getElementById('canvas').addEventListener('mousedown', canvasMouseDown);
+  loadAll();
+});
+</script>
+</body>
+</html>

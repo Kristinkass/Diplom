@@ -1,0 +1,133 @@
+<mxfile host="app.diagrams.net" modified="2026-05-15T15:00:00.000Z" agent="Cascade" version="24.0.0">
+  <diagram id="map-component" name="Диаграмма компонентов">
+    <mxGraphModel dx="1422" dy="900" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1169" pageHeight="826" math="0" shadow="0">
+      <root>
+        <mxCell id="0"/>
+        <mxCell id="1" parent="0"/>
+
+        <!-- Контейнер системы -->
+        <mxCell id="sys" value="Система «Умный коворкинг» — Модуль интерактивной карты" style="rounded=0;whiteSpace=wrap;html=1;fillColor=none;strokeColor=#6c8ebf;align=center;verticalAlign=top;fontSize=14;fontStyle=1;dashed=0;" vertex="1" parent="1">
+          <mxGeometry x="40" y="40" width="1080" height="720" as="geometry"/>
+        </mxCell>
+
+        <!-- Актеры (роли) -->
+        <mxCell id="user_client" value="Клиент" style="shape=umlActor;verticalLabelPosition=bottom;labelBackgroundColor=#ffffff;verticalAlign=top;html=1;outlineConnect=0;" vertex="1" parent="1">
+          <mxGeometry x="80" y="120" width="40" height="60" as="geometry"/>
+        </mxCell>
+        <mxCell id="user_manager" value="Менеджер" style="shape=umlActor;verticalLabelPosition=bottom;labelBackgroundColor=#ffffff;verticalAlign=top;html=1;outlineConnect=0;" vertex="1" parent="1">
+          <mxGeometry x="80" y="270" width="40" height="60" as="geometry"/>
+        </mxCell>
+        <mxCell id="user_admin" value="Администратор" style="shape=umlActor;verticalLabelPosition=bottom;labelBackgroundColor=#ffffff;verticalAlign=top;html=1;outlineConnect=0;" vertex="1" parent="1">
+          <mxGeometry x="80" y="430" width="40" height="60" as="geometry"/>
+        </mxCell>
+
+        <!-- Браузер -->
+        <mxCell id="browser" value="«external»&#10;Браузер пользователя" style="shape=component;align=center;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;" vertex="1" parent="1">
+          <mxGeometry x="220" y="220" width="170" height="80" as="geometry"/>
+        </mxCell>
+
+        <!-- Клиентские шаблоны -->
+        <mxCell id="mapp" value="«component»&#10;mapp.html&#10;(страница карты)" style="shape=component;align=center;html=1;fillColor=#d5e8d4;strokeColor=#82b366;" vertex="1" parent="1">
+          <mxGeometry x="450" y="120" width="200" height="80" as="geometry"/>
+        </mxCell>
+        <mxCell id="editor" value="«component»&#10;editor.html&#10;(редактор планировки)" style="shape=component;align=center;html=1;fillColor=#d5e8d4;strokeColor=#82b366;" vertex="1" parent="1">
+          <mxGeometry x="450" y="220" width="200" height="80" as="geometry"/>
+        </mxCell>
+
+        <!-- JS-логика -->
+        <mxCell id="js_map" value="«component»&#10;JavaScript-модуль карты&#10;(SVG, выбор места,&#10;форма бронирования)" style="shape=component;align=center;html=1;fillColor=#d5e8d4;strokeColor=#82b366;" vertex="1" parent="1">
+          <mxGeometry x="450" y="340" width="200" height="100" as="geometry"/>
+        </mxCell>
+        <mxCell id="js_editor" value="«component»&#10;JavaScript-модуль редактора&#10;(drag-and-drop, стены,&#10;двери, генератор вариантов)" style="shape=component;align=center;html=1;fillColor=#d5e8d4;strokeColor=#82b366;" vertex="1" parent="1">
+          <mxGeometry x="450" y="470" width="200" height="100" as="geometry"/>
+        </mxCell>
+
+        <!-- Серверные компоненты -->
+        <mxCell id="flask" value="«component»&#10;Flask API (app.py)&#10;маршруты карты,&#10;бронирования, обслуживания,&#10;планировки" style="shape=component;align=center;html=1;fillColor=#fff2cc;strokeColor=#d6b656;" vertex="1" parent="1">
+          <mxGeometry x="730" y="180" width="220" height="120" as="geometry"/>
+        </mxCell>
+        <mxCell id="auth" value="«component»&#10;Flask-Login&#10;роль: admin / manager / client" style="shape=component;align=center;html=1;fillColor=#fff2cc;strokeColor=#d6b656;" vertex="1" parent="1">
+          <mxGeometry x="730" y="60" width="220" height="80" as="geometry"/>
+        </mxCell>
+        <mxCell id="layout_svc" value="«component»&#10;Сервис геометрии&#10;(models.py: places,&#10;walls, doors, floors)" style="shape=component;align=center;html=1;fillColor=#fff2cc;strokeColor=#d6b656;" vertex="1" parent="1">
+          <mxGeometry x="730" y="340" width="220" height="100" as="geometry"/>
+        </mxCell>
+        <mxCell id="orm" value="«component»&#10;SQLAlchemy ORM" style="shape=component;align=center;html=1;fillColor=#fff2cc;strokeColor=#d6b656;" vertex="1" parent="1">
+          <mxGeometry x="730" y="470" width="220" height="60" as="geometry"/>
+        </mxCell>
+
+        <!-- Хранилища -->
+        <mxCell id="db" value="«database»&#10;БД (places, users,&#10;bookings)" style="shape=cylinder3;whiteSpace=wrap;html=1;boundedLbl=1;backgroundOutline=1;size=15;fillColor=#f8cecc;strokeColor=#b85450;align=center;" vertex="1" parent="1">
+          <mxGeometry x="980" y="470" width="120" height="80" as="geometry"/>
+        </mxCell>
+        <mxCell id="layout" value="layout.json&#10;(геометрия,&#10;стены, двери, этажи)" style="shape=note;whiteSpace=wrap;html=1;backgroundOutline=1;darkOpacity=0.05;fillColor=#f5f5f5;strokeColor=#666666;align=center;" vertex="1" parent="1">
+          <mxGeometry x="980" y="340" width="120" height="80" as="geometry"/>
+        </mxCell>
+
+        <!-- Связи актер -> браузер -->
+        <mxCell style="endArrow=open;html=1;rounded=0;endSize=8;" edge="1" parent="1" source="user_client" target="browser">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+        <mxCell style="endArrow=open;html=1;rounded=0;endSize=8;" edge="1" parent="1" source="user_manager" target="browser">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+        <mxCell style="endArrow=open;html=1;rounded=0;endSize=8;" edge="1" parent="1" source="user_admin" target="browser">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+
+        <!-- Браузер -> страницы -->
+        <mxCell value="загрузка карты" style="endArrow=open;html=1;rounded=0;endSize=8;" edge="1" parent="1" source="browser" target="mapp">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+        <mxCell value="загрузка редактора&#10;(только администратор)" style="endArrow=open;html=1;rounded=0;endSize=8;dashed=1;" edge="1" parent="1" source="browser" target="editor">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+
+        <!-- Страница -> JS -->
+        <mxCell style="endArrow=open;html=1;rounded=0;endSize=8;" edge="1" parent="1" source="mapp" target="js_map">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+        <mxCell style="endArrow=open;html=1;rounded=0;endSize=8;" edge="1" parent="1" source="editor" target="js_editor">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+
+        <!-- JS -> Flask API -->
+        <mxCell value="REST API / JSON" style="endArrow=open;html=1;rounded=0;endSize=8;" edge="1" parent="1" source="js_map" target="flask">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+        <mxCell value="REST API / JSON" style="endArrow=open;html=1;rounded=0;endSize=8;" edge="1" parent="1" source="js_editor" target="flask">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+
+        <!-- Flask -> auth -->
+        <mxCell value="проверка роли" style="endArrow=open;html=1;rounded=0;endSize=8;" edge="1" parent="1" source="flask" target="auth">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+
+        <!-- Flask -> сервис геометрии -->
+        <mxCell value="чтение/запись планировки" style="endArrow=open;html=1;rounded=0;endSize=8;" edge="1" parent="1" source="flask" target="layout_svc">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+        <!-- сервис -> layout.json -->
+        <mxCell value="layout.json" style="endArrow=open;html=1;rounded=0;endSize=8;" edge="1" parent="1" source="layout_svc" target="layout">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+
+        <!-- Flask -> ORM -->
+        <mxCell value="места, бронирования,&#10;обслуживание" style="endArrow=open;html=1;rounded=0;endSize=8;" edge="1" parent="1" source="flask" target="orm">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+        <!-- ORM -> DB -->
+        <mxCell value="SQL" style="endArrow=open;html=1;rounded=0;endSize=8;" edge="1" parent="1" source="orm" target="db">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+
+        <!-- Подпись -->
+        <mxCell id="legend" value="Условные обозначения:&#10;— сплошная стрелка: вызов / зависимость&#10;— штриховая: доступ ограничен ролью&#10;— цвет: клиент (зелёный), сервер (жёлтый), хранилище (красное)" style="text;html=1;align=left;verticalAlign=top;whiteSpace=wrap;rounded=0;fontSize=11;" vertex="1" parent="1">
+          <mxGeometry x="220" y="600" width="500" height="100" as="geometry"/>
+        </mxCell>
+
+      </root>
+    </mxGraphModel>
+  </diagram>
+</mxfile>

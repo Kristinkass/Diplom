@@ -74,8 +74,13 @@ def render_stars(rating):
 
     return f'<span style="color: #F59E0B;">{stars_html}</span>'
 
-def is_time_slot_available(place_id, booking_date, start_time, end_time, exclude_booking_id=None):
-    # Проверка свободен слот для бронирования
+def is_time_slot_available(place_id, booking_date, start_time, end_time, exclude_booking_id=None, seat_number=None):
+    """Проверка, свободен ли слот для бронирования.
+
+    seat_number:
+      - None      → бронируется стол целиком (конфликт с любой пересекающейся бронью)
+      - 1..cap    → бронируется конкретное место (конфликт с тем же seat_number ИЛИ с бронью стола целиком)
+    """
     try:
         # Конвертируем строки в объекты
         if isinstance(start_time, str):
@@ -121,55 +126,58 @@ def is_time_slot_available(place_id, booking_date, start_time, end_time, exclude
         if duration_hours > 8:
             return False, "Максимальная продолжительность бронирования - 8 часов"
 
-        is_openspace = place.type and place.type.name == 'openspace'
+        # Базовый запрос: все пересекающиеся активные брони этого места
+        overlap_query = models.Booking.query.filter(
+            models.Booking.place_id == place_id,
+            models.Booking.booking_date == booking_date,
+            models.Booking.status == 'active',
+            models.Booking.start_time < end_time,
+            models.Booking.end_time > start_time,
+        )
+        if exclude_booking_id:
+            overlap_query = overlap_query.filter(models.Booking.id != exclude_booking_id)
+        overlapping = overlap_query.all()
 
-        if is_openspace:
-            # Для openspace проверяем вместимость: считаем пересекающиеся брони
-            query = models.Booking.query.filter(
-                models.Booking.place_id == place_id,
-                models.Booking.booking_date == booking_date,
-                models.Booking.status == 'active',
-                models.Booking.start_time < end_time,
-                models.Booking.end_time > start_time
-            )
-            if exclude_booking_id:
-                query = query.filter(models.Booking.id != exclude_booking_id)
+        is_openspace = place.kind == 'openspace'
 
-            concurrent_count = query.count()
-            if concurrent_count >= place.capacity:
-                return False, f"Open Space заполнен ({concurrent_count}/{place.capacity} мест занято на это время)"
+        # Валидация seat_number
+        if seat_number is not None:
+            if not (1 <= int(seat_number) <= place.capacity):
+                return False, f"Некорректный номер места: {seat_number} (вместимость {place.capacity})"
+            # Переговорные — только целиком
+            if place.kind == 'room':
+                return False, "Переговорную можно забронировать только целиком"
 
-            return True, f"Время доступно ({concurrent_count}/{place.capacity} мест занято)"
-        else:
-            # Для обычных мест — стандартная проверка пересечений
-            query = models.Booking.query.filter(
-                models.Booking.place_id == place_id,
-                models.Booking.booking_date == booking_date,
-                models.Booking.status == 'active',
-                db.or_(
-                    db.and_(
-                        models.Booking.start_time <= start_time,
-                        models.Booking.end_time > start_time
-                    ),
-                    db.and_(
-                        models.Booking.start_time < end_time,
-                        models.Booking.end_time >= end_time
-                    ),
-                    db.and_(
-                        models.Booking.start_time >= start_time,
-                        models.Booking.end_time <= end_time
-                    )
-                )
-            )
+        # Отдельные группы броней
+        whole_table_bookings = [b for b in overlapping if b.seat_number is None]
+        seat_bookings = [b for b in overlapping if b.seat_number is not None]
 
-            if exclude_booking_id:
-                query = query.filter(models.Booking.id != exclude_booking_id)
-
-            conflicting_booking = query.first()
-            if conflicting_booking:
-                return False, f"Место уже забронировано с {conflicting_booking.start_time.strftime('%H:%M')} до {conflicting_booking.end_time.strftime('%H:%M')}"
-
+        if seat_number is None:
+            # Для Open Space "без указания места" — резервируем одно свободное место
+            if is_openspace and place.capacity > 1:
+                concurrent = len(overlapping)
+                if concurrent >= place.capacity:
+                    return False, f"Open Space заполнен ({concurrent}/{place.capacity} мест занято)"
+                return True, f"Время доступно ({concurrent}/{place.capacity} мест занято)"
+            # Бронируется стол целиком
+            if overlapping:
+                # Любая пересекающаяся бронь — конфликт
+                if whole_table_bookings:
+                    b = whole_table_bookings[0]
+                    return False, f"Стол уже целиком забронирован с {b.start_time.strftime('%H:%M')} до {b.end_time.strftime('%H:%M')}"
+                return False, f"На этом столе уже занято мест: {len(seat_bookings)}. Забронировать целиком нельзя."
             return True, "Время доступно"
+        else:
+            # Бронируется конкретное место за столом
+            if whole_table_bookings:
+                b = whole_table_bookings[0]
+                return False, f"Стол целиком забронирован с {b.start_time.strftime('%H:%M')} до {b.end_time.strftime('%H:%M')}"
+            same_seat = [b for b in seat_bookings if b.seat_number == int(seat_number)]
+            if same_seat:
+                b = same_seat[0]
+                return False, f"Место №{seat_number} уже занято с {b.start_time.strftime('%H:%M')} до {b.end_time.strftime('%H:%M')}"
+            taken = len(seat_bookings)
+            return True, f"Место №{seat_number} доступно (занято {taken}/{place.capacity})"
     except Exception as e:
         return False, f"Ошибка проверки: {str(e)}"
 
@@ -259,6 +267,18 @@ def admin_required(f):
     def decorated_function(*args, **kwargs):
         if not current_user.is_authenticated or not current_user.is_admin():
             flash('Доступ запрещен. Требуются права администратора.', 'error')
+            return redirect(url_for('dashboard'))
+        return f(*args, **kwargs)
+
+    return decorated_function
+
+
+def staff_required(f):
+    @wraps(f)
+    @login_required
+    def decorated_function(*args, **kwargs):
+        if not current_user.is_authenticated or not (current_user.is_admin() or current_user.is_manager()):
+            flash('Доступ запрещен. Требуются права администратора или менеджера.', 'error')
             return redirect(url_for('dashboard'))
         return f(*args, **kwargs)
 
@@ -418,6 +438,7 @@ def map_view():
                                today=today,
                                time_slots=time_slots,
                                is_admin=current_user.is_admin(),
+                               is_manager=current_user.is_manager(),
                                get_type_name=get_type_name,
                                get_status_name=get_status_name)
     except Exception as e:
@@ -431,9 +452,44 @@ def map_view():
 def get_places():
     try:
         places = models.Place.query.filter_by(active=True).all()
-        return jsonify([place.to_dict() for place in places])
+        return jsonify({
+            'places': [place.to_dict() for place in places],
+            'walls': models.load_walls(),
+            'doors': models.load_doors(),
+        })
     except Exception as e:
         return jsonify({'error': str(e)}), 500
+
+
+@app.route('/api/seat_occupancy/<int:place_id>', methods=['GET'])
+@login_required
+def get_seat_occupancy(place_id):
+    """Какие места за столом заняты на указанный интервал времени.
+
+    Параметры query: date=YYYY-MM-DD, start=HH:MM, end=HH:MM
+    """
+    try:
+        place = models.Place.query.get_or_404(place_id)
+        date_str = request.args.get('date')
+        start_str = request.args.get('start')
+        end_str = request.args.get('end')
+        if not (date_str and start_str and end_str):
+            return jsonify({'success': False, 'error': 'Нужны параметры date, start, end'}), 400
+
+        booking_date_obj = datetime.strptime(date_str, '%Y-%m-%d').date()
+        start_t = datetime.strptime(start_str, '%H:%M').time()
+        end_t = datetime.strptime(end_str, '%H:%M').time()
+
+        status = place.get_seats_status_at(booking_date_obj, start_t, end_t)
+        return jsonify({
+            'success': True,
+            'place_id': place.id,
+            'capacity': place.capacity,
+            'taken_seats': status['taken_seats'],
+            'whole_table_taken': status['whole_table_taken'],
+        })
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)}), 500
 
 
 @app.route('/api/available_times/<int:place_id>', methods=['GET'])
@@ -485,7 +541,7 @@ def get_available_times(place_id):
             if booking_date == today and slot_start < current_time:
                 return False
 
-            is_openspace = place.type and place.type.name == 'openspace'
+            is_openspace = place.kind == 'openspace'
 
             if is_openspace:
                 # Для openspace считаем количество пересекающихся броней
@@ -559,7 +615,7 @@ def get_available_times(place_id):
             'date': date_str,
             'available_slots': grouped_slots,
             'all_slots': all_slots,
-            'is_openspace': place.type and place.type.name == 'openspace',
+            'is_openspace': place.kind == 'openspace',
             'capacity': place.capacity,
             'bookings': [{
                 'start': b.start_time.strftime('%H:%M'),
@@ -583,11 +639,19 @@ def check_booking():
             if field not in data:
                 return jsonify({'success': False, 'error': f'Отсутствует поле: {field}'}), 400
 
+        seat_number = data.get('seat_number')
+        if seat_number is not None:
+            try:
+                seat_number = int(seat_number)
+            except (TypeError, ValueError):
+                seat_number = None
+
         is_available, message = is_time_slot_available(
             data['place_id'],
             data['date'],
             data['start_time'],
-            data['end_time']
+            data['end_time'],
+            seat_number=seat_number,
         )
 
         if is_available:
@@ -595,7 +659,10 @@ def check_booking():
             start_dt = datetime.strptime(data['start_time'], '%H:%M')
             end_dt = datetime.strptime(data['end_time'], '%H:%M')
             duration_hours = (end_dt - start_dt).seconds / 3600
-            total_price = duration_hours * place.price_per_hour
+            if seat_number is None and place.capacity > 1 and place.kind != 'openspace':
+                total_price = duration_hours * place.price_per_hour * place.capacity
+            else:
+                total_price = duration_hours * place.price_per_hour
 
             return jsonify({
                 'success': True,
@@ -631,12 +698,32 @@ def create_booking():
         if not place:
             return jsonify({'error': 'Место не найдено'}), 404
 
-        # Проверяем доступность времени (теперь можно бронировать даже занятые места на другое время)
+        seat_number = data.get('seat_number')
+        if seat_number is not None:
+            try:
+                seat_number = int(seat_number)
+            except (TypeError, ValueError):
+                seat_number = None
+
+        # Open Space без явного seat_number — автоматически назначаем свободное место
+        if seat_number is None and place.kind == 'openspace' and place.capacity > 1:
+            booking_date_obj = datetime.strptime(data['date'], '%Y-%m-%d').date()
+            start_t = datetime.strptime(data['start_time'], '%H:%M').time()
+            end_t = datetime.strptime(data['end_time'], '%H:%M').time()
+            status = place.get_seats_status_at(booking_date_obj, start_t, end_t)
+            taken = set(status['taken_seats'])
+            for n in range(1, place.capacity + 1):
+                if n not in taken:
+                    seat_number = n
+                    break
+
+        # Проверяем доступность времени с учётом seat_number
         is_available, message = is_time_slot_available(
             data['place_id'],
             data['date'],
             data['start_time'],
-            data['end_time']
+            data['end_time'],
+            seat_number=seat_number,
         )
 
         if not is_available:
@@ -645,11 +732,18 @@ def create_booking():
         start_dt = datetime.strptime(data['start_time'], '%H:%M')
         end_dt = datetime.strptime(data['end_time'], '%H:%M')
         duration_hours = (end_dt - start_dt).seconds / 3600
-        total_price = duration_hours * place.price_per_hour
+
+        # Стоимость: бронь места = price_per_hour за место (для multi-seat — это цена одного места);
+        # бронь стола целиком (capacity > 1, не openspace) = price_per_hour * capacity.
+        if seat_number is None and place.capacity > 1 and place.kind != 'openspace':
+            total_price = duration_hours * place.price_per_hour * place.capacity
+        else:
+            total_price = duration_hours * place.price_per_hour
 
         booking = models.Booking(
             user_id=current_user.id,
             place_id=data['place_id'],
+            seat_number=seat_number,
             booking_date=datetime.strptime(data['date'], '%Y-%m-%d').date(),
             start_time=datetime.strptime(data['start_time'], '%H:%M').time(),
             end_time=datetime.strptime(data['end_time'], '%H:%M').time(),
@@ -661,11 +755,13 @@ def create_booking():
         db.session.add(booking)
         db.session.commit()
 
+        seat_msg = f' (место №{seat_number})' if seat_number is not None else ' (стол целиком)' if place.capacity > 1 else ''
         return jsonify({
             'success': True,
             'booking_id': booking.id,
+            'seat_number': seat_number,
             'total_price': total_price,
-            'message': f'Бронирование успешно создано на {data["date"]} с {data["start_time"]} до {data["end_time"]}'
+            'message': f'Бронирование успешно создано{seat_msg} на {data["date"]} с {data["start_time"]} до {data["end_time"]}'
         }), 201
 
     except Exception as e:
@@ -990,6 +1086,13 @@ def user_stats():
 
 # ================== АДМИН ПАНЕЛЬ ==================
 
+@app.route('/admin/editor')
+@admin_required
+def admin_editor():
+    """Отдельная страница-редактор планировки этажа."""
+    return render_template('editor.html')
+
+
 @app.route('/admin')
 @admin_required
 def admin_dashboard():
@@ -1252,6 +1355,31 @@ def admin_make_admin(user_id):
     return redirect(url_for('admin_users'))
 
 
+@app.route('/admin/user/<int:user_id>/set_role/<role>', methods=['POST'])
+@admin_required
+def admin_set_user_role(user_id, role):
+    try:
+        if role not in ('admin', 'manager', 'client'):
+            flash('Invalid user role', 'error')
+            return redirect(url_for('admin_users'))
+
+        user = models.User.query.get_or_404(user_id)
+        user.role = role
+        db.session.commit()
+
+        role_names = {
+            'admin': 'administrator',
+            'manager': 'reception manager',
+            'client': 'client'
+        }
+        flash(f'User {user.email} is now {role_names[role]}', 'success')
+    except Exception as e:
+        db.session.rollback()
+        flash(f'Role update error: {str(e)}', 'error')
+
+    return redirect(url_for('admin_users'))
+
+
 @app.route('/admin/booking/<int:booking_id>/extend', methods=['POST'])
 @admin_required
 def admin_extend_booking(booking_id):
@@ -1402,9 +1530,9 @@ def admin_places():
 
 
 @app.route('/api/admin/place/<int:place_id>/toggle_maintenance', methods=['POST'])
-@admin_required
+@staff_required
 def admin_toggle_maintenance(place_id):
-    """Переключить флаг обслуживания для места (только для администраторов)"""
+    """Переключить флаг обслуживания для места."""
     try:
         place = models.Place.query.get_or_404(place_id)
         place.maintenance = not place.maintenance
@@ -1425,6 +1553,222 @@ def admin_toggle_maintenance(place_id):
         })
     except Exception as e:
         db.session.rollback()
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+
+@app.route('/api/admin/place/create', methods=['POST'])
+@admin_required
+def admin_create_place():
+    """Создать новое рабочее место (БД + layout.json)."""
+    try:
+        data = request.json
+        required = ['name', 'location_code', 'kind', 'x', 'y', 'width', 'height', 'price_per_hour', 'capacity']
+        for f in required:
+            if f not in data:
+                return jsonify({'success': False, 'error': f'Отсутствует поле: {f}'}), 400
+
+        location = models.Location.query.filter_by(code=data['location_code']).first()
+        if not location:
+            return jsonify({'success': False, 'error': f'Локация {data["location_code"]} не найдена'}), 404
+
+        code = models.generate_place_code(data['kind'], data['location_code'])
+
+        # layout.json
+        place_dict = {
+            'code': code,
+            'name': data['name'],
+            'location': data['location_code'],
+            'kind': data['kind'],
+            'mobile': data.get('mobile', False),
+            'x': int(data['x']),
+            'y': int(data['y']),
+            'width': int(data['width']),
+            'height': int(data['height']),
+            'rotation': int(data.get('rotation', 0)) % 360,
+            'floor': int(data.get('floor', 1)),
+            'price_per_hour': float(data['price_per_hour']),
+            'capacity': int(data['capacity']),
+        }
+        models.add_place_to_layout(place_dict)
+
+        # БД
+        place = models.Place(
+            code=code,
+            name=data['name'],
+            kind=data['kind'],
+            location_id=location.id,
+            mobile=data.get('mobile', False),
+            price_per_hour=float(data['price_per_hour']),
+            capacity=int(data['capacity']),
+            status='free',
+            active=True,
+        )
+        db.session.add(place)
+        db.session.commit()
+
+        return jsonify({
+            'success': True,
+            'message': f'Место "{place.name}" создано (код {code})',
+            'place': place.to_dict(),
+        }), 201
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+
+@app.route('/api/admin/place/<int:place_id>', methods=['DELETE'])
+@admin_required
+def admin_delete_place(place_id):
+    """Удалить рабочее место (БД + layout.json)."""
+    try:
+        place = models.Place.query.get_or_404(place_id)
+
+        # Удаляем связанные бронирования
+        models.Booking.query.filter_by(place_id=place.id).delete()
+
+        code = place.code
+        db.session.delete(place)
+        db.session.commit()
+
+        models.remove_place_from_layout(code)
+
+        return jsonify({
+            'success': True,
+            'message': f'Место "{code}" удалено',
+        })
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+
+@app.route('/api/admin/place/move', methods=['POST'])
+@admin_required
+def admin_move_place():
+    """Переместить рабочее место на карте (drag-and-drop). Сохраняет координаты в layout.json."""
+    try:
+        data = request.json
+        code = data.get('code')
+        x = data.get('x')
+        y = data.get('y')
+
+        if not code or x is None or y is None:
+            return jsonify({'success': False, 'error': 'Не указаны code, x или y'}), 400
+
+        place = models.Place.query.filter_by(code=code).first()
+        if not place:
+            return jsonify({'success': False, 'error': f'Место с кодом {code} не найдено'}), 404
+
+        ok = models.save_place_geometry(code, x, y)
+        if not ok:
+            return jsonify({'success': False, 'error': 'Не удалось сохранить координаты'}), 500
+
+        return jsonify({
+            'success': True,
+            'message': f'Место "{place.name}" перемещено (x={int(x)}, y={int(y)})',
+            'code': code, 'x': int(x), 'y': int(y)
+        })
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+
+@app.route('/api/admin/place/resize', methods=['POST'])
+@admin_required
+def admin_resize_place():
+    """Изменить размеры места (width/height) в layout.json."""
+    try:
+        data = request.json
+        code = data.get('code')
+        width = data.get('width')
+        height = data.get('height')
+        if not code or width is None or height is None:
+            return jsonify({'success': False, 'error': 'Не указаны code, width или height'}), 400
+        ok = models.resize_place(code, width, height)
+        if not ok:
+            return jsonify({'success': False, 'error': 'Место не найдено'}), 404
+        return jsonify({'success': True, 'message': f'Размеры {code} изменены: {width}×{height}'})
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+
+@app.route('/api/admin/place/rotate', methods=['POST'])
+@admin_required
+def admin_rotate_place():
+    try:
+        data = request.json
+        code = data.get('code')
+        rotation = data.get('rotation')
+        if not code or rotation is None:
+            return jsonify({'success': False, 'error': 'Не указаны code или rotation'}), 400
+        ok = models.rotate_place(code, rotation)
+        if not ok:
+            return jsonify({'success': False, 'error': 'Место не найдено'}), 404
+        return jsonify({'success': True, 'message': f'Поворот {code}: {int(rotation) % 360}°'})
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+
+# --- Стены ---
+@app.route('/api/admin/walls', methods=['GET'])
+@admin_required
+def get_walls():
+    return jsonify({'walls': models.load_walls(), 'doors': models.load_doors()})
+
+
+@app.route('/api/admin/wall/create', methods=['POST'])
+@admin_required
+def create_wall():
+    try:
+        d = request.json
+        wall_id = models.add_wall(d['x1'], d['y1'], d['x2'], d['y2'], floor=d.get('floor', 1))
+        return jsonify({'success': True, 'wall_id': wall_id})
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+
+@app.route('/api/admin/wall/<int:wall_id>', methods=['DELETE'])
+@admin_required
+def remove_wall(wall_id):
+    try:
+        models.delete_wall(wall_id)
+        return jsonify({'success': True})
+    except PermissionError as e:
+        return jsonify({'success': False, 'error': str(e)}), 403
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+
+# --- Двери ---
+@app.route('/api/admin/door/create', methods=['POST'])
+@admin_required
+def create_door():
+    try:
+        d = request.json
+        door_id = models.add_door(d['wall_id'], d['position'], floor=d.get('floor', 1))
+        return jsonify({'success': True, 'door_id': door_id})
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+
+@app.route('/api/admin/door/<int:door_id>', methods=['DELETE'])
+@admin_required
+def remove_door(door_id):
+    try:
+        models.delete_door(door_id)
+        return jsonify({'success': True})
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+
+@app.route('/api/admin/door/move', methods=['POST'])
+@admin_required
+def move_door():
+    try:
+        d = request.json
+        ok = models.move_door(d['door_id'], d['wall_id'], d['position'])
+        if not ok:
+            return jsonify({'success': False, 'error': 'Дверь не найдена'}), 404
+        return jsonify({'success': True})
+    except Exception as e:
         return jsonify({'success': False, 'error': str(e)}), 500
 
 

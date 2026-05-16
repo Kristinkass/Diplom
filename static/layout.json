@@ -1,0 +1,1109 @@
+{
+  "coworking": {
+    "name": "Умный Коворкинг",
+    "address": "г. Пример, ул. Примерная, д. 1"
+  },
+  "floor": {
+    "number": 1,
+    "name": "1-й этаж"
+  },
+  "grid": {
+    "cols": 80,
+    "rows": 48,
+    "cell": 28
+  },
+  "locations": [
+    {
+      "code": "1А",
+      "name": "Офисная зона",
+      "kind": "office_zone"
+    },
+    {
+      "code": "1Б",
+      "name": "Зона рабочих столов",
+      "kind": "desk_zone"
+    },
+    {
+      "code": "2А",
+      "name": "Кабинеты переговоров",
+      "kind": "room_zone"
+    },
+    {
+      "code": "3А",
+      "name": "Большие переговорные",
+      "kind": "room_zone"
+    },
+    {
+      "code": "OS",
+      "name": "Open Space",
+      "kind": "openspace_zone"
+    }
+  ],
+  "places": [
+    {
+      "code": "1Б-01",
+      "name": "Стол складной",
+      "location": "1Б",
+      "kind": "desk",
+      "mobile": false,
+      "x": 1101,
+      "y": 5,
+      "width": 100,
+      "height": 75,
+      "price_per_hour": 250.0,
+      "capacity": 1
+    },
+    {
+      "code": "1Б-02",
+      "name": "Стол на 4",
+      "location": "1Б",
+      "kind": "desk",
+      "mobile": false,
+      "x": 2018,
+      "y": 477,
+      "width": 125,
+      "height": 113,
+      "price_per_hour": 250.0,
+      "capacity": 4
+    },
+    {
+      "code": "1Б-03",
+      "name": "Стол на 8",
+      "location": "1Б",
+      "kind": "desk",
+      "mobile": false,
+      "x": 5,
+      "y": 1,
+      "width": 216,
+      "height": 85,
+      "price_per_hour": 250.0,
+      "capacity": 8
+    },
+    {
+      "code": "1Б-04",
+      "name": "Стол на 8",
+      "location": "1Б",
+      "kind": "desk",
+      "mobile": false,
+      "x": 221,
+      "y": 3,
+      "width": 199,
+      "height": 84,
+      "price_per_hour": 250.0,
+      "capacity": 8
+    },
+    {
+      "code": "1Б-05",
+      "name": "Стол на 6",
+      "location": "1Б",
+      "kind": "desk",
+      "mobile": false,
+      "x": 53,
+      "y": 257,
+      "width": 280,
+      "height": 120,
+      "price_per_hour": 250.0,
+      "capacity": 6
+    },
+    {
+      "code": "1Б-06",
+      "name": "Стол на 8",
+      "location": "1Б",
+      "kind": "desk",
+      "mobile": false,
+      "x": 1954,
+      "y": 736,
+      "width": 209,
+      "height": 206,
+      "price_per_hour": 250.0,
+      "capacity": 8,
+      "rotation": 0
+    },
+    {
+      "code": "1Б-07",
+      "name": "Стол",
+      "location": "1Б",
+      "kind": "desk",
+      "mobile": false,
+      "x": 849,
+      "y": 5,
+      "width": 188,
+      "height": 82,
+      "price_per_hour": 250.0,
+      "capacity": 1
+    },
+    {
+      "code": "1Б-08",
+      "name": "Стол",
+      "location": "1Б",
+      "kind": "desk",
+      "mobile": false,
+      "x": 1256,
+      "y": 4,
+      "width": 101,
+      "height": 79,
+      "price_per_hour": 250.0,
+      "capacity": 1
+    },
+    {
+      "code": "1Б-09",
+      "name": "Стол",
+      "location": "1Б",
+      "kind": "desk",
+      "mobile": false,
+      "x": 421,
+      "y": 2,
+      "width": 221,
+      "height": 84,
+      "price_per_hour": 250.0,
+      "capacity": 1
+    },
+    {
+      "code": "1Б-10",
+      "name": "Стол",
+      "location": "1Б",
+      "kind": "desk",
+      "mobile": false,
+      "x": 643,
+      "y": 0,
+      "width": 198,
+      "height": 86,
+      "price_per_hour": 250.0,
+      "capacity": 1
+    },
+    {
+      "code": "1Б-11",
+      "name": "Стол на 6",
+      "location": "1Б",
+      "kind": "desk",
+      "mobile": false,
+      "x": 508,
+      "y": 258,
+      "width": 280,
+      "height": 120,
+      "price_per_hour": 250.0,
+      "capacity": 6
+    },
+    {
+      "code": "1Б-12",
+      "name": "Стол",
+      "location": "1Б",
+      "kind": "desk",
+      "mobile": false,
+      "x": 1554,
+      "y": 4,
+      "width": 195,
+      "height": 81,
+      "price_per_hour": 250.0,
+      "capacity": 1
+    },
+    {
+      "code": "1Б-14",
+      "name": "Стол на 8",
+      "location": "1Б",
+      "kind": "desk",
+      "mobile": false,
+      "x": 1116,
+      "y": 213,
+      "width": 380,
+      "height": 130,
+      "price_per_hour": 250.0,
+      "capacity": 8
+    },
+    {
+      "code": "1Б-19",
+      "name": "Стол на 8",
+      "location": "1Б",
+      "kind": "desk",
+      "mobile": false,
+      "x": 1842,
+      "y": 43,
+      "width": 308,
+      "height": 168,
+      "price_per_hour": 250.0,
+      "capacity": 8
+    },
+    {
+      "code": "1Б-20",
+      "name": "Стол складной",
+      "location": "1Б",
+      "kind": "desk",
+      "mobile": false,
+      "x": 1989,
+      "y": 305,
+      "width": 100,
+      "height": 75,
+      "price_per_hour": 250.0,
+      "capacity": 1,
+      "rotation": 180
+    },
+    {
+      "code": "1Б-21",
+      "name": "Стол складной",
+      "location": "1Б",
+      "kind": "desk",
+      "mobile": false,
+      "x": 2135,
+      "y": 305,
+      "width": 100,
+      "height": 75,
+      "price_per_hour": 250.0,
+      "capacity": 1,
+      "rotation": 180
+    },
+    {
+      "code": "3А-01",
+      "name": "Переговорный стол 10 мест",
+      "location": "3А",
+      "kind": "room",
+      "mobile": false,
+      "x": 1162,
+      "y": 1091,
+      "width": 362,
+      "height": 211,
+      "rotation": 0,
+      "price_per_hour": 500.0,
+      "capacity": 10
+    },
+    {
+      "code": "3А-02",
+      "name": "Переговорный стол 10 мест",
+      "location": "3А",
+      "kind": "room",
+      "mobile": false,
+      "x": 1813,
+      "y": 1096,
+      "width": 372,
+      "height": 204,
+      "rotation": 0,
+      "price_per_hour": 500.0,
+      "capacity": 10
+    },
+    {
+      "code": "1Б-22",
+      "name": "Стол складной",
+      "location": "1Б",
+      "kind": "desk",
+      "mobile": false,
+      "x": 1814,
+      "y": 306,
+      "width": 100,
+      "height": 75,
+      "rotation": 180,
+      "price_per_hour": 250.0,
+      "capacity": 1
+    },
+    {
+      "code": "1Б-30",
+      "name": "Стол на 8",
+      "location": "1Б",
+      "kind": "desk",
+      "mobile": false,
+      "x": 42,
+      "y": 912,
+      "width": 340,
+      "height": 180,
+      "rotation": 0,
+      "floor": 1,
+      "price_per_hour": 250.0,
+      "capacity": 8
+    },
+    {
+      "code": "1Б-31",
+      "name": "Стол складной",
+      "location": "1Б",
+      "kind": "desk",
+      "mobile": false,
+      "x": 478,
+      "y": 1227,
+      "width": 100,
+      "height": 75,
+      "rotation": 0,
+      "floor": 1,
+      "price_per_hour": 250.0,
+      "capacity": 1
+    },
+    {
+      "code": "1Б-32",
+      "name": "Стол складной",
+      "location": "1Б",
+      "kind": "desk",
+      "mobile": false,
+      "x": 767,
+      "y": 83,
+      "width": 100,
+      "height": 75,
+      "rotation": 0,
+      "floor": 3,
+      "price_per_hour": 250.0,
+      "capacity": 1
+    },
+    {
+      "code": "1Б-33",
+      "name": "Стол складной",
+      "location": "1Б",
+      "kind": "desk",
+      "mobile": false,
+      "x": 1367,
+      "y": 160,
+      "width": 100,
+      "height": 75,
+      "rotation": 0,
+      "floor": 3,
+      "price_per_hour": 250.0,
+      "capacity": 1
+    },
+    {
+      "code": "1Б-34",
+      "name": "Стол статичный",
+      "location": "1Б",
+      "kind": "desk",
+      "mobile": false,
+      "x": 1129,
+      "y": 127,
+      "width": 200,
+      "height": 125,
+      "rotation": 0,
+      "floor": 3,
+      "price_per_hour": 250.0,
+      "capacity": 1
+    },
+    {
+      "code": "1Б-35",
+      "name": "Стол складной",
+      "location": "1Б",
+      "kind": "desk",
+      "mobile": false,
+      "x": 1410,
+      "y": 6,
+      "width": 100,
+      "height": 75,
+      "rotation": 0,
+      "floor": 1,
+      "price_per_hour": 250.0,
+      "capacity": 1
+    },
+    {
+      "code": "1Б-36",
+      "name": "Стол на 6",
+      "location": "1Б",
+      "kind": "desk",
+      "mobile": false,
+      "x": 189,
+      "y": 194,
+      "width": 252,
+      "height": 138,
+      "rotation": 0,
+      "floor": 2,
+      "price_per_hour": 250.0,
+      "capacity": 6
+    },
+    {
+      "code": "1Б-37",
+      "name": "Стол складной",
+      "location": "1Б",
+      "kind": "desk",
+      "mobile": false,
+      "x": 3,
+      "y": 4,
+      "width": 100,
+      "height": 75,
+      "rotation": 0,
+      "floor": 2,
+      "price_per_hour": 250.0,
+      "capacity": 1
+    },
+    {
+      "code": "1Б-38",
+      "name": "Стол на 8",
+      "location": "1Б",
+      "kind": "desk",
+      "mobile": false,
+      "x": 1907,
+      "y": 1046,
+      "width": 275,
+      "height": 164,
+      "rotation": 0,
+      "floor": 2,
+      "price_per_hour": 250.0,
+      "capacity": 8
+    },
+    {
+      "code": "1Б-39",
+      "name": "Стол на 4",
+      "location": "1Б",
+      "kind": "desk",
+      "mobile": false,
+      "x": 1676,
+      "y": 1201,
+      "width": 131,
+      "height": 104,
+      "rotation": 0,
+      "floor": 2,
+      "price_per_hour": 250.0,
+      "capacity": 4
+    },
+    {
+      "code": "1Б-40",
+      "name": "Стол складной",
+      "location": "1Б",
+      "kind": "desk",
+      "mobile": false,
+      "x": 1620,
+      "y": 870,
+      "width": 100,
+      "height": 75,
+      "rotation": 0,
+      "floor": 2,
+      "price_per_hour": 250.0,
+      "capacity": 1
+    },
+    {
+      "code": "1Б-41",
+      "name": "Стол складной",
+      "location": "1Б",
+      "kind": "desk",
+      "mobile": false,
+      "x": 1060,
+      "y": 1035,
+      "width": 100,
+      "height": 75,
+      "rotation": 0,
+      "floor": 2,
+      "price_per_hour": 250.0,
+      "capacity": 1
+    },
+    {
+      "code": "1Б-42",
+      "name": "Стол на 4",
+      "location": "1Б",
+      "kind": "desk",
+      "mobile": false,
+      "x": 712,
+      "y": 1169,
+      "width": 134,
+      "height": 105,
+      "rotation": 0,
+      "floor": 2,
+      "price_per_hour": 250.0,
+      "capacity": 4
+    },
+    {
+      "code": "1Б-44",
+      "name": "Стол складной",
+      "location": "1Б",
+      "kind": "desk",
+      "mobile": false,
+      "x": 400,
+      "y": 1040,
+      "width": 100,
+      "height": 75,
+      "rotation": 0,
+      "floor": 2,
+      "price_per_hour": 250.0,
+      "capacity": 1
+    },
+    {
+      "code": "1Б-45",
+      "name": "Стол на 6",
+      "location": "1Б",
+      "kind": "desk",
+      "mobile": false,
+      "x": 1435,
+      "y": 234,
+      "width": 300,
+      "height": 160,
+      "rotation": 0,
+      "floor": 2,
+      "price_per_hour": 250.0,
+      "capacity": 6
+    },
+    {
+      "code": "1Б-46",
+      "name": "Стол на 8",
+      "location": "1Б",
+      "kind": "desk",
+      "mobile": false,
+      "x": 1788,
+      "y": 53,
+      "width": 340,
+      "height": 180,
+      "rotation": 0,
+      "floor": 2,
+      "price_per_hour": 250.0,
+      "capacity": 8
+    },
+    {
+      "code": "1Б-47",
+      "name": "Стол на 4",
+      "location": "1Б",
+      "kind": "desk",
+      "mobile": false,
+      "x": 376,
+      "y": 985,
+      "width": 260,
+      "height": 150,
+      "rotation": 90,
+      "floor": 3,
+      "price_per_hour": 250.0,
+      "capacity": 4
+    }
+  ],
+  "services": [
+    {
+      "code": "place_short",
+      "name": "Краткосрочная аренда рабочего места",
+      "kind": "place_short"
+    },
+    {
+      "code": "place_month",
+      "name": "Месячная аренда рабочего места",
+      "kind": "place_month"
+    },
+    {
+      "code": "location_short",
+      "name": "Краткосрочная аренда переговорной",
+      "kind": "location_short"
+    }
+  ],
+  "tariffs": [
+    {
+      "service_code": "place_short",
+      "name": "1 час (стол)",
+      "price": 250,
+      "duration_hours": 1
+    },
+    {
+      "service_code": "place_short",
+      "name": "4 часа (стол)",
+      "price": 900,
+      "duration_hours": 4
+    },
+    {
+      "service_code": "place_short",
+      "name": "1 час (open space)",
+      "price": 150,
+      "duration_hours": 1
+    },
+    {
+      "service_code": "place_month",
+      "name": "Безлимит / месяц (стол)",
+      "price": 15000,
+      "duration_hours": null
+    },
+    {
+      "service_code": "location_short",
+      "name": "1 час (переговорная)",
+      "price": 500,
+      "duration_hours": 1
+    },
+    {
+      "service_code": "location_short",
+      "name": "1 час (офис)",
+      "price": 800,
+      "duration_hours": 1
+    }
+  ],
+  "walls": [
+    {
+      "id": 1,
+      "x1": 0,
+      "y1": 0,
+      "x2": 2240,
+      "y2": 0,
+      "protected": true,
+      "floor": 1
+    },
+    {
+      "id": 2,
+      "x1": 2240,
+      "y1": 0,
+      "x2": 2240,
+      "y2": 1344,
+      "protected": true,
+      "floor": 1
+    },
+    {
+      "id": 3,
+      "x1": 2240,
+      "y1": 1344,
+      "x2": 0,
+      "y2": 1344,
+      "protected": true,
+      "floor": 1
+    },
+    {
+      "id": 4,
+      "x1": 0,
+      "y1": 1344,
+      "x2": 0,
+      "y2": 0,
+      "protected": true,
+      "floor": 1
+    },
+    {
+      "id": 5,
+      "x1": 0,
+      "y1": 445,
+      "x2": 845,
+      "y2": 445,
+      "floor": 1
+    },
+    {
+      "id": 6,
+      "x1": 845,
+      "y1": 0,
+      "x2": 845,
+      "y2": 445,
+      "floor": 1
+    },
+    {
+      "id": 7,
+      "x1": 1750,
+      "y1": 0,
+      "x2": 1750,
+      "y2": 385,
+      "floor": 1
+    },
+    {
+      "id": 8,
+      "x1": 1750,
+      "y1": 385,
+      "x2": 2240,
+      "y2": 385,
+      "floor": 1
+    },
+    {
+      "id": 9,
+      "x1": 0,
+      "y1": 870,
+      "x2": 620,
+      "y2": 870,
+      "floor": 1
+    },
+    {
+      "id": 10,
+      "x1": 620,
+      "y1": 870,
+      "x2": 620,
+      "y2": 1344,
+      "floor": 1
+    },
+    {
+      "id": 11,
+      "x1": 1080,
+      "y1": 1035,
+      "x2": 1605,
+      "y2": 1035,
+      "floor": 1
+    },
+    {
+      "id": 12,
+      "x1": 1080,
+      "y1": 1035,
+      "x2": 1080,
+      "y2": 1344,
+      "floor": 1
+    },
+    {
+      "id": 13,
+      "x1": 1605,
+      "y1": 1035,
+      "x2": 1605,
+      "y2": 1344,
+      "floor": 1
+    },
+    {
+      "id": 14,
+      "x1": 1735,
+      "y1": 1035,
+      "x2": 2240,
+      "y2": 1035,
+      "floor": 1
+    },
+    {
+      "id": 15,
+      "x1": 1735,
+      "y1": 1035,
+      "x2": 1735,
+      "y2": 1344,
+      "floor": 1
+    },
+    {
+      "id": 16,
+      "x1": 2240,
+      "y1": 0,
+      "x2": 0,
+      "y2": 0,
+      "protected": true,
+      "floor": 2
+    },
+    {
+      "id": 17,
+      "x1": 0,
+      "y1": 0,
+      "x2": 0,
+      "y2": 1344,
+      "protected": true,
+      "floor": 2
+    },
+    {
+      "id": 18,
+      "x1": 0,
+      "y1": 1344,
+      "x2": 2240,
+      "y2": 1344,
+      "protected": true,
+      "floor": 2
+    },
+    {
+      "id": 19,
+      "x1": 2240,
+      "y1": 1344,
+      "x2": 2240,
+      "y2": 0,
+      "protected": true,
+      "floor": 2
+    },
+    {
+      "id": 20,
+      "x1": 2240,
+      "y1": 445,
+      "x2": 1395,
+      "y2": 445,
+      "floor": 2
+    },
+    {
+      "id": 21,
+      "x1": 1395,
+      "y1": 0,
+      "x2": 1395,
+      "y2": 445,
+      "floor": 2
+    },
+    {
+      "id": 22,
+      "x1": 490,
+      "y1": 0,
+      "x2": 490,
+      "y2": 385,
+      "floor": 2
+    },
+    {
+      "id": 23,
+      "x1": 490,
+      "y1": 385,
+      "x2": 0,
+      "y2": 385,
+      "floor": 2
+    },
+    {
+      "id": 24,
+      "x1": 2240,
+      "y1": 870,
+      "x2": 1620,
+      "y2": 870,
+      "floor": 2
+    },
+    {
+      "id": 25,
+      "x1": 1620,
+      "y1": 870,
+      "x2": 1620,
+      "y2": 1344,
+      "floor": 2
+    },
+    {
+      "id": 26,
+      "x1": 1160,
+      "y1": 1035,
+      "x2": 635,
+      "y2": 1035,
+      "floor": 2
+    },
+    {
+      "id": 27,
+      "x1": 1160,
+      "y1": 1035,
+      "x2": 1160,
+      "y2": 1344,
+      "floor": 2
+    },
+    {
+      "id": 28,
+      "x1": 635,
+      "y1": 1035,
+      "x2": 635,
+      "y2": 1344,
+      "floor": 2
+    },
+    {
+      "id": 29,
+      "x1": 505,
+      "y1": 1035,
+      "x2": 0,
+      "y2": 1035,
+      "floor": 2
+    },
+    {
+      "id": 30,
+      "x1": 505,
+      "y1": 1035,
+      "x2": 505,
+      "y2": 1344,
+      "floor": 2
+    },
+    {
+      "id": 31,
+      "x1": 0,
+      "y1": 1344,
+      "x2": 2240,
+      "y2": 1344,
+      "protected": true,
+      "floor": 3
+    },
+    {
+      "id": 32,
+      "x1": 2240,
+      "y1": 1344,
+      "x2": 2240,
+      "y2": 0,
+      "protected": true,
+      "floor": 3
+    },
+    {
+      "id": 33,
+      "x1": 2240,
+      "y1": 0,
+      "x2": 0,
+      "y2": 0,
+      "protected": true,
+      "floor": 3
+    },
+    {
+      "id": 34,
+      "x1": 0,
+      "y1": 0,
+      "x2": 0,
+      "y2": 1344,
+      "protected": true,
+      "floor": 3
+    },
+    {
+      "id": 35,
+      "x1": 0,
+      "y1": 899,
+      "x2": 845,
+      "y2": 899,
+      "floor": 3
+    },
+    {
+      "id": 36,
+      "x1": 845,
+      "y1": 1344,
+      "x2": 845,
+      "y2": 899,
+      "floor": 3
+    },
+    {
+      "id": 37,
+      "x1": 1750,
+      "y1": 1344,
+      "x2": 1750,
+      "y2": 959,
+      "floor": 3
+    },
+    {
+      "id": 38,
+      "x1": 1750,
+      "y1": 959,
+      "x2": 2240,
+      "y2": 959,
+      "floor": 3
+    },
+    {
+      "id": 39,
+      "x1": 0,
+      "y1": 474,
+      "x2": 620,
+      "y2": 474,
+      "floor": 3
+    },
+    {
+      "id": 40,
+      "x1": 620,
+      "y1": 474,
+      "x2": 620,
+      "y2": 0,
+      "floor": 3
+    },
+    {
+      "id": 41,
+      "x1": 1080,
+      "y1": 309,
+      "x2": 1605,
+      "y2": 309,
+      "floor": 3
+    },
+    {
+      "id": 42,
+      "x1": 1080,
+      "y1": 309,
+      "x2": 1080,
+      "y2": 0,
+      "floor": 3
+    },
+    {
+      "id": 43,
+      "x1": 1605,
+      "y1": 309,
+      "x2": 1605,
+      "y2": 0,
+      "floor": 3
+    },
+    {
+      "id": 44,
+      "x1": 1735,
+      "y1": 309,
+      "x2": 2240,
+      "y2": 309,
+      "floor": 3
+    },
+    {
+      "id": 45,
+      "x1": 1735,
+      "y1": 309,
+      "x2": 1735,
+      "y2": 0,
+      "floor": 3
+    }
+  ],
+  "doors": [
+    {
+      "id": 1,
+      "wall_id": 5,
+      "position": 0.58,
+      "width": 170,
+      "floor": 1
+    },
+    {
+      "id": 2,
+      "wall_id": 9,
+      "position": 0.78,
+      "width": 170,
+      "floor": 1
+    },
+    {
+      "id": 3,
+      "wall_id": 11,
+      "position": 0.18,
+      "width": 170,
+      "floor": 1
+    },
+    {
+      "id": 4,
+      "wall_id": 14,
+      "position": 0.2,
+      "width": 170,
+      "floor": 1
+    },
+    {
+      "id": 5,
+      "wall_id": 7,
+      "position": 0.72,
+      "width": 150,
+      "floor": 1
+    },
+    {
+      "id": 6,
+      "wall_id": 4,
+      "position": 0.5,
+      "width": 180,
+      "floor": 1
+    },
+    {
+      "id": 7,
+      "wall_id": 20,
+      "position": 0.42000000000000004,
+      "width": 170,
+      "floor": 2
+    },
+    {
+      "id": 8,
+      "wall_id": 24,
+      "position": 0.21999999999999997,
+      "width": 170,
+      "floor": 2
+    },
+    {
+      "id": 9,
+      "wall_id": 26,
+      "position": 0.8200000000000001,
+      "width": 170,
+      "floor": 2
+    },
+    {
+      "id": 10,
+      "wall_id": 29,
+      "position": 0.8,
+      "width": 170,
+      "floor": 2
+    },
+    {
+      "id": 11,
+      "wall_id": 22,
+      "position": 0.28,
+      "width": 150,
+      "floor": 2
+    },
+    {
+      "id": 12,
+      "wall_id": 17,
+      "position": 0.5,
+      "width": 180,
+      "floor": 2
+    },
+    {
+      "id": 13,
+      "wall_id": 35,
+      "position": 0.42000000000000004,
+      "width": 170,
+      "floor": 3
+    },
+    {
+      "id": 14,
+      "wall_id": 39,
+      "position": 0.21999999999999997,
+      "width": 170,
+      "floor": 3
+    },
+    {
+      "id": 15,
+      "wall_id": 41,
+      "position": 0.8200000000000001,
+      "width": 170,
+      "floor": 3
+    },
+    {
+      "id": 16,
+      "wall_id": 44,
+      "position": 0.8,
+      "width": 170,
+      "floor": 3
+    },
+    {
+      "id": 17,
+      "wall_id": 37,
+      "position": 0.28,
+      "width": 150,
+      "floor": 3
+    },
+    {
+      "id": 18,
+      "wall_id": 34,
+      "position": 0.5,
+      "width": 180,
+      "floor": 3
+    }
+  ]
+}

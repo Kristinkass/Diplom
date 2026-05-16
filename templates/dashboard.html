@@ -579,7 +579,7 @@
                                 <h4>{{ booking.place.name if booking.place else 'Неизвестное место' }}</h4>
                                 <div class="booking-details">
                                     <span><i class="fas fa-tag"></i> {{ get_type_name(booking.place.type) if booking.place else '' }}</span>
-                                    <span><i class="fas fa-map-marker-alt"></i> {{ booking.place.x }},{{ booking.place.y }}</span>
+                                    <span><i class="fas fa-map-marker-alt"></i> {{ booking.place.location.code if booking.place and booking.place.location else '' }} · {{ booking.place.code if booking.place else '' }}</span>
                                 </div>
                             </div>
 
