@@ -1796,8 +1796,6 @@ if __name__ == '__main__':
     init_db(app)
     print("СИСТЕМА БРОНИРОВАНИЯ КОВОРКИНГА")
     print("=" * 60)
-    print("Сервер запущен: http://0.0.0.0:5000")
-    print("С телефона: http://ТВОЙ_IP:5000")
     print("Админ: admin@coworking.com / 123456")
 
     app.run(debug=True, host='0.0.0.0', port=5000, use_reloader=False)
