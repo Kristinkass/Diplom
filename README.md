@@ -1,99 +1,113 @@
-# Система бронирования и управления рабочими местами в коворкинге
+# Система управления рабочими местами в коворкинге
 
-Веб-сайт для бронирования рабочих мест в коворкинге. Проект написан на Python с использованием Flask и базы данных MySQL.
+Веб-приложение для бронирования рабочих мест и переговорных.
 
+**Стек:** Python 3.10+, Flask, PostgreSQL, SQLAlchemy. Геометрия этажей — в `static/layout.json`, бизнес-данные — в PostgreSQL.
 
-Перед запуском проекта установите:
+## Требования
 
-1. Python 3.10 или новее.
-2. MySQL Server.
-3. Git, если проект будет скачиваться из репозитория.
-4. Любой редактор кода, например PyCharm или Visual Studio Code.
+- Python 3.10+
+- PostgreSQL 12+
+- Git
 
-## Как развернуть проект
-
-### Выполните команду:
+## Быстрый старт (локально)
 
 ```bash
-git clone https://github.com/Kristinkass/Diplom
+git clone <url-репозитория>
+cd <папка-проекта>
 
-# Перейдите в папку проекта:
-cd Diplom
-
-# Создание и активация виртуального окружения
 python -m venv venv
 
-# Для Windows
+# Windows
 venv\Scripts\activate
 
-# Для macOS/Linux
+# macOS / Linux
 source venv/bin/activate
 
-# Установка зависимостей
 pip install -r requirements.txt
 ```
 
-## Настроить базу данных MySQL
+Скопируйте `.env.example` в `.env` и укажите параметры подключения к БД:
 
-Откройте MySQL и создайте базу данных:
-
-```sql
-CREATE DATABASE coworking_boo CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
-```
-По умолчанию проект подключается к базе данных со следующими параметрами:
- 
-```text
-host: localhost
-port: 3306
-user: root
-password: 123456
-database: coworking_boo
-```
-Если у вас другой пароль/пользователь MySQL, нужно указать свои данные в файле `.env`.
- 
-## Создать файл `.env`
- 
-В корне проекта создайте файл `.env` и вставьте туда:
- 
 ```env
-SECRET_KEY=dev-secret-key-change-in-production
+SECRET_KEY=ваша_случайная_строка
 DB_HOST=localhost
-DB_USER=root
-DB_PASSWORD=123456
-DB_NAME=coworking_boo
-DB_PORT=3306
-```
-Если пароль/пользователь от MySQL другой, замените значение `DB_PASSWORD` и `DB_USER`.
- 
-## Запустить сайт
+DB_USER=postgres
+DB_PASSWORD=ваш_пароль
+DB_NAME=coworking
+DB_PORT=5432
 
-В папке проекта выполните:
+ADMIN_EMAIL=admin@coworking.com
+ADMIN_PASSWORD=ВашНадёжныйПароль
+ADMIN_NAME=Администратор
+```
+
+Запуск в режиме разработки:
 
 ```bash
-python app.py
+python cmd/app/main.py
 ```
 
-При первом запуске приложение автоматически создаст таблицы в базе данных и добавит тестовые данные.
+Приложение: http://127.0.0.1:5000
 
-Администратор:
+При первом запуске создаются таблицы, выполняются миграции и инициализируются начальные данные (включая администратора из `.env`).
+
+## API-документация (Swagger)
+
+После запуска доступны:
+
+| URL | Описание |
+|-----|----------|
+| http://127.0.0.1:5000/docs/ | Swagger UI |
+| http://127.0.0.1:5000/openapi.json | OpenAPI 3.0 спецификация |
+
+Документация генерируется автоматически из всех зарегистрированных маршрутов Flask. Для защищённых эндпоинтов используется сессионная cookie (`session`) — сначала войдите через `/login`.
+
+## Запуск через Docker
+
+```bash
+# Скопируйте и настройте переменные
+cp .env.example .env
+
+# Сборка и запуск (приложение + PostgreSQL)
+docker compose up --build
+```
+
+Приложение: http://localhost:5000  
+Swagger: http://localhost:5000/docs/
+
+Остановка:
+
+```bash
+docker compose down
+```
+
+Данные PostgreSQL сохраняются в Docker volume `pgdata`.
+
+## Структура проекта
 
 ```text
-email: admin@coworking.com
-password: 123456
+cmd/app/main.py          — точка входа (dev)
+wsgi.py                  — точка входа (production / Docker)
+internal/
+  application.py         — фабрика Flask
+  config.py              — настройки
+  swagger/               — OpenAPI / Swagger UI
+  handlers/              — HTTP-маршруты
+  services/              — бизнес-логика
+  repositories/          — доступ к PostgreSQL
+  layout/                — карта (layout.json)
+  models/                — ORM и миграции
+static/                  — CSS, JS, layout.json
+templates/               — HTML-шаблоны
+Dockerfile
+docker-compose.yml
 ```
 
-Менеджер:
+## Production (без Docker)
 
-```text
-email: manager@coworking.com
-password: 123456
+```bash
+pip install -r requirements.txt
+# задайте переменные окружения или .env
+waitress-serve --host=0.0.0.0 --port=5000 wsgi:app
 ```
-
-## Основные файлы проекта
-
-- **`app.py`**: основной файл запуска сайта.
-- **`models.py`**: модели базы данных и создание тестовых данных.
-- **`config.py`**: настройки подключения к базе данных.
-- **`requirements.txt`**: список Python-библиотек.
-- **`templates/`**: HTML-шаблоны страниц.
-- **`static/`**: стили, изображения и статические файлы.
