@@ -2,7 +2,7 @@
 
 Веб-приложение для бронирования рабочих мест и переговорных.
 
-**Стек:** Python 3.10+, Flask, PostgreSQL, SQLAlchemy. Геометрия этажей — в `static/layout.json`, бизнес-данные — в PostgreSQL.
+**Стек:** Python 3.10+, Flask, PostgreSQL, SQLAlchemy. Геометрия этажей - в `static/layout.json`, бизнес-данные - в PostgreSQL.
 
 ## Требования
 
