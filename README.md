@@ -96,7 +96,7 @@ docker-compose.yml
 ### Клонирование на другом компьютере
 
 ```bash
-git clone https://github.com/ВАШ_ЛОГИН/smart-coworking.git
+git clone https://github.com/Kristinkass/smart-coworking
 cd smart-coworking
 python -m venv venv
 venv\Scripts\activate          # Windows
