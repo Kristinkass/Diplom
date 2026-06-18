@@ -7,15 +7,10 @@ venv
 env
 __pycache__
 *.py[cod]
-.pytest_cache
 .mypy_cache
 .ruff_cache
-htmlcov
-.coverage
 *.log
 .env
 .env.*
 !.env.example
 instance
-doc_extract*.txt
-doc_pz_extract.txt
